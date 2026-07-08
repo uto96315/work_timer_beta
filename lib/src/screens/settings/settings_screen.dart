@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../providers/user_profile_providers.dart';
+import '../../providers/widget_sync_providers.dart';
 import '../../providers/workplace_providers.dart';
 import '../../widgets/account_link_form.dart';
 import '../../widgets/notification_settings_form.dart';
@@ -46,9 +47,58 @@ class SettingsScreen extends ConsumerWidget {
               error: (e, _) => Text('エラー: $e'),
               data: (profile) => NotificationSettingsForm(profile: profile),
             ),
+            const SizedBox(height: 16),
+            const _WidgetSyncSection(),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Manually re-pushes today's data to the iOS home-screen widget and
+/// reports success/failure via a SnackBar. Release builds print nothing to
+/// any console the user can see, so this is the only way to tell whether a
+/// sync attempt actually failed on their device.
+class _WidgetSyncSection extends ConsumerStatefulWidget {
+  const _WidgetSyncSection();
+
+  @override
+  ConsumerState<_WidgetSyncSection> createState() => _WidgetSyncSectionState();
+}
+
+class _WidgetSyncSectionState extends ConsumerState<_WidgetSyncSection> {
+  bool _isSyncing = false;
+
+  Future<void> _sync() async {
+    setState(() => _isSyncing = true);
+    final error = await triggerWidgetSyncNow(ref);
+    if (!mounted) return;
+    setState(() => _isSyncing = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(error == null ? 'ウィジェットを更新しました' : '更新に失敗しました: $error'),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SettingsSection(
+      icon: Icons.widgets_outlined,
+      title: 'ウィジェット',
+      children: [
+        FilledButton.tonal(
+          onPressed: _isSyncing ? null : _sync,
+          child: _isSyncing
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('ウィジェットを今すぐ更新'),
+        ),
+      ],
     );
   }
 }

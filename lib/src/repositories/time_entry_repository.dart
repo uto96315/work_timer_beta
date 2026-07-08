@@ -53,16 +53,33 @@ class TimeEntryRepository {
         .map((s) => s.docs.map(TimeEntryFirestore.fromDoc).toList());
   }
 
-  Future<TimeEntry> clockIn(String uid, String workplaceId) async {
+  Future<TimeEntry> clockIn(String uid, String workplaceId, int breakMinutes) async {
     final now = DateTime.now();
-    return _createClockIn(uid, workplaceId, clockInTime: now, isAuto: false);
+    return _createClockIn(
+      uid,
+      workplaceId,
+      clockInTime: now,
+      isAuto: false,
+      breakMinutes: breakMinutes,
+    );
   }
 
   /// Creates a clock-in entry backdated to the workplace's scheduled start
   /// time, used when the user opens the app after their shift should have
   /// already started. Flagged so the UI can prompt them to double-check it.
-  Future<TimeEntry> autoClockIn(String uid, String workplaceId, DateTime scheduledStart) async {
-    return _createClockIn(uid, workplaceId, clockInTime: scheduledStart, isAuto: true);
+  Future<TimeEntry> autoClockIn(
+    String uid,
+    String workplaceId,
+    DateTime scheduledStart,
+    int breakMinutes,
+  ) async {
+    return _createClockIn(
+      uid,
+      workplaceId,
+      clockInTime: scheduledStart,
+      isAuto: true,
+      breakMinutes: breakMinutes,
+    );
   }
 
   Future<TimeEntry> _createClockIn(
@@ -70,6 +87,7 @@ class TimeEntryRepository {
     String workplaceId, {
     required DateTime clockInTime,
     required bool isAuto,
+    required int breakMinutes,
   }) async {
     final doc = _collection(uid, workplaceId).doc();
     final entry = TimeEntry(
@@ -77,6 +95,7 @@ class TimeEntryRepository {
       workplaceId: workplaceId,
       date: _dateFormat.format(clockInTime),
       clockIn: clockInTime,
+      breakMinutes: breakMinutes,
       isAutoClockedIn: isAuto,
       createdAt: DateTime.now(),
     );

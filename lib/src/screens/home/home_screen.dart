@@ -50,7 +50,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     _autoClockInTriggered = true;
     ref
         .read(timeEntryRepositoryProvider)
-        .autoClockIn(uid, workplace.id, scheduledStart);
+        .autoClockIn(uid, workplace.id, scheduledStart, workplace.breakMinutes);
   }
 
   Future<void> _editClockIn(TimeEntry entry, Workplace workplace) async {
@@ -660,13 +660,13 @@ class _DayTimeline extends StatelessWidget {
       );
     }
 
-    var totalSeconds = 0;
     var elapsedSeconds = 0;
+    var scheduledSeconds = 0;
     var overtimeElapsedSeconds = 0;
     var hasOvertimeBlock = false;
     for (final block in blocks) {
       final blockSeconds = block.end.difference(block.start).inSeconds;
-      totalSeconds += blockSeconds;
+      if (!block.isOvertime) scheduledSeconds += blockSeconds;
       var doneSeconds = 0;
       if (block.state == BlockState.done) {
         doneSeconds = blockSeconds;
@@ -679,11 +679,15 @@ class _DayTimeline extends StatelessWidget {
         overtimeElapsedSeconds += doneSeconds;
       }
     }
-    final overallProgress = totalSeconds == 0
-        ? 0.0
-        : (elapsedSeconds / totalSeconds).clamp(0.0, 1.0);
+    // Percent is relative to the original scheduled shift, not the
+    // overtime-extended total, so it can climb past 100% once overtime
+    // starts instead of hovering at 100% forever.
+    final progressPercent = scheduledSeconds == 0
+        ? 0
+        : ((elapsedSeconds / scheduledSeconds) * 100).round();
+    final regularElapsedSeconds = elapsedSeconds - overtimeElapsedSeconds;
     final remaining = Duration(
-      seconds: (totalSeconds - elapsedSeconds).clamp(0, totalSeconds),
+      seconds: (scheduledSeconds - regularElapsedSeconds).clamp(0, scheduledSeconds),
     );
     final hasBreak = blocks.any((b) => b.isBreak && !b.isExtraBreak);
 
@@ -693,7 +697,7 @@ class _DayTimeline extends StatelessWidget {
       child: Column(
         children: [
           _TimelineProgressHeader(
-            progress: overallProgress,
+            progressPercent: progressPercent,
             remaining: remaining,
             isOvertime: hasOvertimeBlock,
             overtimeElapsed: Duration(seconds: overtimeElapsedSeconds),
@@ -776,28 +780,26 @@ class _ExtraBreakButton extends StatelessWidget {
     if (isOnBreak) {
       return Align(
         alignment: Alignment.centerLeft,
-        child: FilledButton.icon(
+        child: FilledButton(
           onPressed: onPressed,
-          icon: const Icon(Icons.play_arrow_rounded, size: 18),
-          label: const Text('休憩を終える'),
           style: FilledButton.styleFrom(
             backgroundColor: scheme.tertiary,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           ),
+          child: const Text('休憩を終える'),
         ),
       );
     }
     return Align(
       alignment: Alignment.centerLeft,
-      child: TextButton.icon(
+      child: TextButton(
         onPressed: onPressed,
-        icon: const Icon(Icons.free_breakfast_outlined, size: 18),
-        label: const Text('休憩に入る'),
         style: TextButton.styleFrom(
           padding: EdgeInsets.zero,
           minimumSize: Size.zero,
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
+        child: const Text('休憩に入る'),
       ),
     );
   }
@@ -805,23 +807,22 @@ class _ExtraBreakButton extends StatelessWidget {
 
 class _TimelineProgressHeader extends StatelessWidget {
   const _TimelineProgressHeader({
-    required this.progress,
+    required this.progressPercent,
     required this.remaining,
     required this.isOvertime,
     required this.overtimeElapsed,
   });
 
-  final double progress;
+  final int progressPercent;
   final Duration remaining;
   final bool isOvertime;
   final Duration overtimeElapsed;
 
   String get _remainingLabel {
-    if (progress >= 1) return '本日のスケジュール終了';
+    if (progressPercent >= 100) return '本日のスケジュール終了';
     final h = remaining.inHours;
     final m = remaining.inMinutes % 60;
-    if (h <= 0) return 'あと$m分';
-    return 'あと$h時間$m分';
+    return h <= 0 ? 'あと$m分' : 'あと$h時間$m分';
   }
 
   String get _overtimeLabel {
@@ -832,86 +833,73 @@ class _TimelineProgressHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (isOvertime) {
-      return Container(
-        padding: const EdgeInsets.fromLTRB(18, 12, 18, 12),
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFFFF8A5C), Color(0xFFE85D3D)],
-          ),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.bolt_rounded, color: Colors.white, size: 22),
-            const SizedBox(width: 8),
-            const Text(
-              '残業中',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const Spacer(),
-            Text(
-              _overtimeLabel,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    final percent = (progress * 100).round();
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 12, 18, 12),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF19C3A6), Color(0xFF0D8F84)],
+          colors: isOvertime
+              ? const [Color(0xFFFF8A5C), Color(0xFFE85D3D)]
+              : const [Color(0xFF19C3A6), Color(0xFF0D8F84)],
         ),
       ),
-      child: Row(
-        children: [
-          Text(
-            '$percent%',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-              height: 1,
+      child: isOvertime
+          ? Row(
+              children: [
+                const Text(
+                  '残業中',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  _overtimeLabel,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            )
+          : Row(
+              children: [
+                Text(
+                  '$progressPercent%',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    height: 1,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(99),
+                    child: LinearProgressIndicator(
+                      value: (progressPercent / 100).clamp(0.0, 1.0),
+                      minHeight: 8,
+                      backgroundColor: Colors.white.withValues(alpha: 0.25),
+                      valueColor: const AlwaysStoppedAnimation(Colors.white),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  _remainingLabel,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(99),
-              child: LinearProgressIndicator(
-                value: progress,
-                minHeight: 8,
-                backgroundColor: Colors.white.withValues(alpha: 0.25),
-                valueColor: const AlwaysStoppedAnimation(Colors.white),
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Text(
-            _remainingLabel,
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
