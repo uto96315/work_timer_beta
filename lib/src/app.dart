@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'providers/auth_providers.dart';
+import 'providers/notification_providers.dart';
 import 'providers/workplace_providers.dart';
 import 'screens/account/account_screen.dart';
 import 'screens/home/home_screen.dart';
@@ -59,14 +60,14 @@ class _RootRouter extends ConsumerWidget {
   }
 }
 
-class _RootScaffold extends StatefulWidget {
+class _RootScaffold extends ConsumerStatefulWidget {
   const _RootScaffold();
 
   @override
-  State<_RootScaffold> createState() => _RootScaffoldState();
+  ConsumerState<_RootScaffold> createState() => _RootScaffoldState();
 }
 
-class _RootScaffoldState extends State<_RootScaffold> {
+class _RootScaffoldState extends ConsumerState<_RootScaffold> {
   int _index = 0;
 
   static const _screens = [
@@ -85,6 +86,9 @@ class _RootScaffoldState extends State<_RootScaffold> {
 
   @override
   Widget build(BuildContext context) {
+    // Keeps scheduled local notifications in sync with the workplace hours
+    // and notification prefs whenever either changes.
+    ref.watch(notificationSyncProvider);
     return Scaffold(
       extendBody: true,
       body: IndexedStack(index: _index, children: _screens),

@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../repositories/time_entry_repository.dart';
+import '../repositories/user_profile_repository.dart';
 import '../repositories/workplace_repository.dart';
 
 part 'firebase_providers.g.dart';
@@ -33,3 +34,7 @@ WorkplaceRepository workplaceRepository(Ref ref) =>
 @Riverpod(keepAlive: true)
 TimeEntryRepository timeEntryRepository(Ref ref) =>
     TimeEntryRepository(ref.watch(firestoreProvider));
+
+@Riverpod(keepAlive: true)
+UserProfileRepository userProfileRepository(Ref ref) =>
+    UserProfileRepository(ref.watch(firestoreProvider));

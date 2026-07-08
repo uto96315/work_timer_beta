@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../models/employment_type.dart';
+import '../models/industry.dart';
 import '../models/workplace.dart';
 import '../providers/auth_providers.dart';
 import '../providers/firebase_providers.dart';
@@ -13,15 +15,15 @@ class WorkplaceForm extends ConsumerStatefulWidget {
     super.key,
     required this.workplace,
     this.onSaved,
-    this.showNameField = true,
+    this.showOptionalDetails = true,
   });
 
   final Workplace? workplace;
   final VoidCallback? onSaved;
 
-  /// The onboarding flow skips the workplace name to keep first setup short;
-  /// it can be filled in later from the settings screen.
-  final bool showNameField;
+  /// The onboarding flow skips industry/employment type to keep first setup
+  /// short; they can be filled in later from the settings screen.
+  final bool showOptionalDetails;
 
   @override
   ConsumerState<WorkplaceForm> createState() => _WorkplaceFormState();
@@ -29,19 +31,19 @@ class WorkplaceForm extends ConsumerStatefulWidget {
 
 class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
   final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _nameController;
   late final TextEditingController _wageController;
   late final TextEditingController _breakController;
   late final TextEditingController _overtimeController;
   late TimeOfDay _startTime;
   late TimeOfDay _endTime;
   late TimeOfDay _breakStartTime;
+  Industry? _industry;
+  EmploymentType? _employmentType;
 
   @override
   void initState() {
     super.initState();
     final w = widget.workplace;
-    _nameController = TextEditingController(text: w?.name ?? '');
     _wageController = TextEditingController(text: w?.hourlyWage.toString() ?? '');
     _breakController = TextEditingController(text: w?.breakMinutes.toString() ?? '60');
     _overtimeController =
@@ -49,6 +51,8 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
     _startTime = _parseTime(w?.startTime) ?? const TimeOfDay(hour: 9, minute: 0);
     _endTime = _parseTime(w?.endTime) ?? const TimeOfDay(hour: 18, minute: 0);
     _breakStartTime = _parseTime(w?.breakStartTime) ?? const TimeOfDay(hour: 12, minute: 0);
+    _industry = w?.industry;
+    _employmentType = w?.employmentType;
   }
 
   TimeOfDay? _parseTime(String? hhmm) {
@@ -62,7 +66,6 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
 
   @override
   void dispose() {
-    _nameController.dispose();
     _wageController.dispose();
     _breakController.dispose();
     _overtimeController.dispose();
@@ -76,14 +79,14 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
     final repo = ref.read(workplaceRepositoryProvider);
     final existing = widget.workplace;
     final now = DateTime.now();
-    final name = _nameController.text.trim().isEmpty ? null : _nameController.text.trim();
 
     if (existing == null) {
       await repo.create(
         uid,
         Workplace(
           id: '',
-          name: name,
+          industry: _industry,
+          employmentType: _employmentType,
           hourlyWage: int.parse(_wageController.text),
           startTime: _formatTime(_startTime),
           endTime: _formatTime(_endTime),
@@ -97,7 +100,8 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
       await repo.update(
         uid,
         existing.copyWith(
-          name: name,
+          industry: _industry,
+          employmentType: _employmentType,
           hourlyWage: int.parse(_wageController.text),
           startTime: _formatTime(_startTime),
           endTime: _formatTime(_endTime),
@@ -117,13 +121,30 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
   Widget build(BuildContext context) {
     return Form(
       key: _formKey,
-      child: ListView(
-        padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (widget.showNameField) ...[
-            TextFormField(
-              controller: _nameController,
-              decoration: const InputDecoration(labelText: '勤務先名（任意）'),
+          if (widget.showOptionalDetails) ...[
+            DropdownButtonFormField<Industry?>(
+              initialValue: _industry,
+              decoration: const InputDecoration(labelText: '業種（任意）'),
+              items: [
+                const DropdownMenuItem(value: null, child: Text('未設定')),
+                for (final industry in Industry.values)
+                  DropdownMenuItem(value: industry, child: Text(industry.label)),
+              ],
+              onChanged: (v) => setState(() => _industry = v),
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<EmploymentType?>(
+              initialValue: _employmentType,
+              decoration: const InputDecoration(labelText: '雇用形態（任意）'),
+              items: [
+                const DropdownMenuItem(value: null, child: Text('未設定')),
+                for (final type in EmploymentType.values)
+                  DropdownMenuItem(value: type, child: Text(type.label)),
+              ],
+              onChanged: (v) => setState(() => _employmentType = v),
             ),
             const SizedBox(height: 16),
           ],

@@ -306,7 +306,7 @@ class _HomeContent extends ConsumerWidget {
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
           children: [
-            _Greeting(workplaceName: workplace.name ?? '仕事タイマー'),
+            const _Greeting(),
             const SizedBox(height: 10),
             _EarningsHeroCard(
               totalYen: todayTotals.totalYen,
@@ -373,9 +373,7 @@ class _HomeContent extends ConsumerWidget {
 }
 
 class _Greeting extends StatelessWidget {
-  const _Greeting({required this.workplaceName});
-
-  final String workplaceName;
+  const _Greeting();
 
   @override
   Widget build(BuildContext context) {
@@ -385,24 +383,14 @@ class _Greeting extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(left: 15),
-                child: Text(
-                  dateLabel,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: Theme.of(context).colorScheme.outline,
-                  ),
-                ),
+          child: Padding(
+            padding: const EdgeInsets.only(left: 15),
+            child: Text(
+              dateLabel,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                color: Theme.of(context).colorScheme.outline,
               ),
-              const SizedBox(height: 2),
-              // Text(
-              //   workplaceName,
-              //   style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-              // ),
-            ],
+            ),
           ),
         ),
       ],

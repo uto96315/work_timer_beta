@@ -239,3 +239,51 @@ final class TimeEntryRepositoryProvider
 
 String _$timeEntryRepositoryHash() =>
     r'dd9ec765424c23377d2852531977764728f0aa20';
+
+@ProviderFor(userProfileRepository)
+final userProfileRepositoryProvider = UserProfileRepositoryProvider._();
+
+final class UserProfileRepositoryProvider
+    extends
+        $FunctionalProvider<
+          UserProfileRepository,
+          UserProfileRepository,
+          UserProfileRepository
+        >
+    with $Provider<UserProfileRepository> {
+  UserProfileRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'userProfileRepositoryProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$userProfileRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<UserProfileRepository> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  UserProfileRepository create(Ref ref) {
+    return userProfileRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(UserProfileRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<UserProfileRepository>(value),
+    );
+  }
+}
+
+String _$userProfileRepositoryHash() =>
+    r'0e38b3fc3642cc05fe71b31dd97397b46c688fba';

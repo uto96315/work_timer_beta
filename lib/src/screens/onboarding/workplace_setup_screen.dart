@@ -21,10 +21,13 @@ class WorkplaceSetupScreen extends StatelessWidget {
             child: Text('時給や勤務時間を入力してください。あとから設定タブでいつでも変更できます。'),
           ),
           Expanded(
-            child: WorkplaceForm(
-              workplace: null,
-              showNameField: false,
-              onSaved: () => Navigator.of(context).popUntil((route) => route.isFirst),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: WorkplaceForm(
+                workplace: null,
+                showOptionalDetails: false,
+                onSaved: () => Navigator.of(context).popUntil((route) => route.isFirst),
+              ),
             ),
           ),
         ],

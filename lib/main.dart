@@ -3,11 +3,14 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 import 'firebase_options.dart';
 import 'src/app.dart';
+import 'src/providers/notification_providers.dart';
+import 'src/services/notification_service.dart';
 
 /// Run with `--dart-define=USE_FIREBASE_EMULATOR=true` to point Auth and
 /// Firestore at the local Firebase Emulator Suite (`firebase emulators:start`)
@@ -26,5 +29,15 @@ void main() async {
     FirebaseFirestore.instance.useFirestoreEmulator('localhost', 8090);
   }
 
-  runApp(const ProviderScope(child: WorkTimerApp()));
+  final notificationService = NotificationService(FlutterLocalNotificationsPlugin());
+  await notificationService.init();
+
+  runApp(
+    ProviderScope(
+      overrides: [
+        notificationServiceProvider.overrideWithValue(notificationService),
+      ],
+      child: const WorkTimerApp(),
+    ),
+  );
 }

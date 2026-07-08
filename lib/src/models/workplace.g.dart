@@ -8,7 +8,11 @@ part of 'workplace.dart';
 
 _Workplace _$WorkplaceFromJson(Map<String, dynamic> json) => _Workplace(
   id: json['id'] as String,
-  name: json['name'] as String?,
+  industry: $enumDecodeNullable(_$IndustryEnumMap, json['industry']),
+  employmentType: $enumDecodeNullable(
+    _$EmploymentTypeEnumMap,
+    json['employmentType'],
+  ),
   hourlyWage: (json['hourlyWage'] as num).toInt(),
   startTime: json['startTime'] as String,
   endTime: json['endTime'] as String,
@@ -28,7 +32,8 @@ Map<String, dynamic> _$WorkplaceToJson(
   _Workplace instance,
 ) => <String, dynamic>{
   'id': instance.id,
-  'name': instance.name,
+  'industry': _$IndustryEnumMap[instance.industry],
+  'employmentType': _$EmploymentTypeEnumMap[instance.employmentType],
   'hourlyWage': instance.hourlyWage,
   'startTime': instance.startTime,
   'endTime': instance.endTime,
@@ -38,4 +43,31 @@ Map<String, dynamic> _$WorkplaceToJson(
   'holidayWeekdays': instance.holidayWeekdays,
   'createdAt': const TimestampConverter().toJson(instance.createdAt),
   'updatedAt': const NullableTimestampConverter().toJson(instance.updatedAt),
+};
+
+const _$IndustryEnumMap = {
+  Industry.foodService: 'foodService',
+  Industry.retail: 'retail',
+  Industry.officeWork: 'officeWork',
+  Industry.itEngineer: 'itEngineer',
+  Industry.education: 'education',
+  Industry.medicalWelfare: 'medicalWelfare',
+  Industry.logistics: 'logistics',
+  Industry.manufacturing: 'manufacturing',
+  Industry.construction: 'construction',
+  Industry.serviceIndustry: 'serviceIndustry',
+  Industry.agriculture: 'agriculture',
+  Industry.finance: 'finance',
+  Industry.publicServant: 'publicServant',
+  Industry.student: 'student',
+  Industry.other: 'other',
+};
+
+const _$EmploymentTypeEnumMap = {
+  EmploymentType.partTimeArbeit: 'partTimeArbeit',
+  EmploymentType.partTime: 'partTime',
+  EmploymentType.fullTime: 'fullTime',
+  EmploymentType.contract: 'contract',
+  EmploymentType.temporary: 'temporary',
+  EmploymentType.other: 'other',
 };

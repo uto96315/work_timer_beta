@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import '../util/firestore_converters.dart';
+import 'employment_type.dart';
+import 'industry.dart';
 
 part 'workplace.freezed.dart';
 part 'workplace.g.dart';
@@ -15,7 +17,10 @@ part 'workplace.g.dart';
 abstract class Workplace with _$Workplace {
   const factory Workplace({
     required String id,
-    String? name,
+    /// What kind of job this is, used for benchmarking pay against similar
+    /// jobs elsewhere.
+    Industry? industry,
+    EmploymentType? employmentType,
     /// Base hourly wage in yen.
     required int hourlyWage,
     /// Scheduled start time, "HH:mm" (24h, local time).

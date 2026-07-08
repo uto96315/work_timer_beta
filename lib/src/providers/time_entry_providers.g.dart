@@ -295,4 +295,4 @@ final class LiveEarningsProvider
   }
 }
 
-String _$liveEarningsHash() => r'3b7e6f9ea2e120c19fec9730929799488677ef48';
+String _$liveEarningsHash() => r'bc8606d89041cff13e10cbed47096bae2f6760c1';
