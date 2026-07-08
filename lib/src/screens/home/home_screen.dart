@@ -607,7 +607,18 @@ class _DayTimeline extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (blocks.isEmpty) {
-      return const SizedBox.shrink();
+      // No schedule blocks left to show (e.g. an extremely late clock-in
+      // pushed the start past the scheduled end) — still offer a way to log
+      // a break instead of hiding the whole card.
+      if (onEditBreakStart == null) return const SizedBox.shrink();
+      return Card(
+        margin: EdgeInsets.zero,
+        clipBehavior: Clip.antiAlias,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 16, 10),
+          child: _AddBreakButton(onPressed: onEditBreakStart!),
+        ),
+      );
     }
 
     var totalSeconds = 0;
@@ -659,21 +670,32 @@ class _DayTimeline extends StatelessWidget {
           if (!hasBreak && onEditBreakStart != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 0, 16, 10),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton.icon(
-                  onPressed: onEditBreakStart,
-                  icon: const Icon(Icons.add_rounded, size: 18),
-                  label: const Text('休憩を追加'),
-                  style: TextButton.styleFrom(
-                    padding: EdgeInsets.zero,
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                ),
-              ),
+              child: _AddBreakButton(onPressed: onEditBreakStart!),
             ),
         ],
+      ),
+    );
+  }
+}
+
+class _AddBreakButton extends StatelessWidget {
+  const _AddBreakButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: TextButton.icon(
+        onPressed: onPressed,
+        icon: const Icon(Icons.add_rounded, size: 18),
+        label: const Text('休憩を追加'),
+        style: TextButton.styleFrom(
+          padding: EdgeInsets.zero,
+          minimumSize: Size.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
       ),
     );
   }
