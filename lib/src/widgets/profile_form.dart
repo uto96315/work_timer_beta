@@ -8,94 +8,62 @@ import '../models/prefectures.dart';
 import '../models/user_profile.dart';
 import '../providers/auth_providers.dart';
 import '../providers/firebase_providers.dart';
+import 'settings_ui.dart';
+
+const _unset = '未設定';
 
 /// Editable personal/demographic fields, stored on the top-level
 /// `users/{uid}` doc (see [UserProfile]). All optional — used for future
 /// benchmarking against similar workers, never required to use the app.
-class ProfileForm extends ConsumerStatefulWidget {
+/// Every field saves immediately on selection; there's nothing to submit.
+class ProfileForm extends ConsumerWidget {
   const ProfileForm({super.key, required this.profile});
 
   final UserProfile profile;
 
-  @override
-  ConsumerState<ProfileForm> createState() => _ProfileFormState();
-}
-
-class _ProfileFormState extends ConsumerState<ProfileForm> {
-  late Gender? _gender = widget.profile.gender;
-  late AgeBracket? _ageBracket = widget.profile.ageBracket;
-  late String? _prefecture = widget.profile.prefecture;
-  late JobChangeIntention? _jobChangeIntention = widget.profile.jobChangeIntention;
-
-  Future<void> _save() async {
+  Future<void> _save(WidgetRef ref, UserProfile updated) async {
     final uid = ref.read(currentUidProvider);
     if (uid == null) return;
-    await ref.read(userProfileRepositoryProvider).update(
-      uid,
-      widget.profile.copyWith(
-        gender: _gender,
-        ageBracket: _ageBracket,
-        prefecture: _prefecture,
-        jobChangeIntention: _jobChangeIntention,
-      ),
-    );
-    if (mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('保存しました')));
-    }
+    await ref.read(userProfileRepositoryProvider).update(uid, updated);
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+  Widget build(BuildContext context, WidgetRef ref) {
+    return SettingsSection(
+      icon: Icons.badge_outlined,
+      title: 'プロフィール',
       children: [
-        DropdownButtonFormField<Gender?>(
-          initialValue: _gender,
-          decoration: const InputDecoration(labelText: '性別（任意）'),
-          items: [
-            const DropdownMenuItem(value: null, child: Text('未設定')),
-            for (final gender in Gender.values)
-              DropdownMenuItem(value: gender, child: Text(gender.label)),
-          ],
-          onChanged: (v) => setState(() => _gender = v),
+        SettingsPickerRow<Gender?>(
+          label: '性別',
+          value: profile.gender,
+          options: [null, ...Gender.values],
+          labelOf: (v) => v?.label ?? _unset,
+          onChanged: (v) => _save(ref, profile.copyWith(gender: v)),
         ),
-        const SizedBox(height: 16),
-        DropdownButtonFormField<AgeBracket?>(
-          initialValue: _ageBracket,
-          decoration: const InputDecoration(labelText: '年齢（任意）'),
-          items: [
-            const DropdownMenuItem(value: null, child: Text('未設定')),
-            for (final bracket in AgeBracket.values)
-              DropdownMenuItem(value: bracket, child: Text(bracket.label)),
-          ],
-          onChanged: (v) => setState(() => _ageBracket = v),
+        const SizedBox(height: 10),
+        SettingsPickerRow<AgeBracket?>(
+          label: '年齢',
+          value: profile.ageBracket,
+          options: [null, ...AgeBracket.values],
+          labelOf: (v) => v?.label ?? _unset,
+          onChanged: (v) => _save(ref, profile.copyWith(ageBracket: v)),
         ),
-        const SizedBox(height: 16),
-        DropdownButtonFormField<String?>(
-          initialValue: _prefecture,
-          decoration: const InputDecoration(labelText: '都道府県（任意）'),
-          items: [
-            const DropdownMenuItem(value: null, child: Text('未設定')),
-            for (final prefecture in kPrefectures)
-              DropdownMenuItem(value: prefecture, child: Text(prefecture)),
-          ],
-          onChanged: (v) => setState(() => _prefecture = v),
+        const SizedBox(height: 10),
+        SettingsPickerRow<String?>(
+          label: '都道府県',
+          value: profile.prefecture,
+          options: [null, ...kPrefectures],
+          labelOf: (v) => v ?? _unset,
+          onChanged: (v) => _save(ref, profile.copyWith(prefecture: v)),
         ),
-        const SizedBox(height: 16),
-        DropdownButtonFormField<JobChangeIntention?>(
-          initialValue: _jobChangeIntention,
-          decoration: const InputDecoration(labelText: '転職意思（任意）'),
-          items: [
-            const DropdownMenuItem(value: null, child: Text('未設定')),
-            for (final intention in JobChangeIntention.values)
-              DropdownMenuItem(value: intention, child: Text(intention.label)),
-          ],
-          onChanged: (v) => setState(() => _jobChangeIntention = v),
+        const SizedBox(height: 10),
+        SettingsPickerRow<JobChangeIntention?>(
+          label: '転職意思',
+          value: profile.jobChangeIntention,
+          options: [null, ...JobChangeIntention.values],
+          labelOf: (v) => v?.label ?? _unset,
+          onChanged: (v) => _save(ref, profile.copyWith(jobChangeIntention: v)),
         ),
-        const SizedBox(height: 24),
-        FilledButton(onPressed: _save, child: const Text('保存')),
       ],
     );
   }

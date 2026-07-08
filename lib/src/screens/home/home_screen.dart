@@ -341,7 +341,6 @@ class _HomeContent extends ConsumerWidget {
                   child: _StatTile(
                     label: '今週',
                     value: _yenFormat.format(weekTotals.totalYen),
-                    icon: Icons.calendar_view_week_rounded,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -349,7 +348,6 @@ class _HomeContent extends ConsumerWidget {
                   child: _StatTile(
                     label: '今月',
                     value: _yenFormat.format(monthTotals.totalYen),
-                    icon: Icons.calendar_month_rounded,
                   ),
                 ),
               ],
@@ -359,9 +357,7 @@ class _HomeContent extends ConsumerWidget {
               label: '今月の残業',
               value:
                   '${monthTotals.overtimeSeconds ~/ 3600}時間${(monthTotals.overtimeSeconds % 3600) ~/ 60}分',
-              icon: monthOvertimeHours >= 80
-                  ? Icons.warning_rounded
-                  : Icons.timelapse_rounded,
+              icon: null,
               accentColor: overtimeAccentColor,
               caption: overtimeCaption,
             ),

@@ -5,6 +5,7 @@ import '../models/user_profile.dart';
 import '../providers/auth_providers.dart';
 import '../providers/firebase_providers.dart';
 import '../providers/notification_providers.dart';
+import 'settings_ui.dart';
 
 /// Notification toggles, stored on the top-level `users/{uid}` doc. A single
 /// master switch, plus separate switches for the clock-in/clock-out time
@@ -22,9 +23,11 @@ class NotificationSettingsForm extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Column(
+    return SettingsSection(
+      icon: Icons.notifications_outlined,
+      title: '通知',
       children: [
-        SwitchListTile(
+        SwitchListTile.adaptive(
           contentPadding: EdgeInsets.zero,
           title: const Text('通知を受け取る'),
           value: profile.notificationsEnabled,
@@ -33,7 +36,7 @@ class NotificationSettingsForm extends ConsumerWidget {
             await _update(ref, profile.copyWith(notificationsEnabled: v));
           },
         ),
-        SwitchListTile(
+        SwitchListTile.adaptive(
           contentPadding: EdgeInsets.zero,
           title: const Text('出勤予定時刻の通知'),
           value: profile.notifyClockInReminder,
@@ -41,7 +44,7 @@ class NotificationSettingsForm extends ConsumerWidget {
               ? null
               : (v) => _update(ref, profile.copyWith(notifyClockInReminder: v)),
         ),
-        SwitchListTile(
+        SwitchListTile.adaptive(
           contentPadding: EdgeInsets.zero,
           title: const Text('退勤予定時刻の通知'),
           value: profile.notifyClockOutReminder,

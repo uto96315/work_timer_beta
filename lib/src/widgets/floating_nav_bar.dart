@@ -47,17 +47,40 @@ class FloatingNavBar extends StatelessWidget {
               ),
             ],
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          child: Stack(
             children: [
-              for (var i = 0; i < destinations.length; i++)
-                _NavIconButton(
-                  destination: destinations[i],
-                  selected: i == selectedIndex,
-                  selectedColor: colorScheme.primary,
-                  unselectedColor: colorScheme.outline,
-                  onTap: () => onDestinationSelected(i),
+              AnimatedAlign(
+                duration: const Duration(milliseconds: 280),
+                curve: Curves.easeOutCubic,
+                alignment: destinations.length <= 1
+                    ? Alignment.center
+                    : Alignment(-1 + 2 * selectedIndex / (destinations.length - 1), 0),
+                child: FractionallySizedBox(
+                  widthFactor: 1 / destinations.length,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: colorScheme.primary.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                    ),
+                  ),
                 ),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  for (var i = 0; i < destinations.length; i++)
+                    _NavIconButton(
+                      destination: destinations[i],
+                      selected: i == selectedIndex,
+                      selectedColor: colorScheme.primary,
+                      unselectedColor: colorScheme.outline,
+                      onTap: () => onDestinationSelected(i),
+                    ),
+                ],
+              ),
             ],
           ),
         ),
@@ -88,17 +111,9 @@ class _NavIconButton extends StatelessWidget {
         onTap: onTap,
         customBorder: const StadiumBorder(),
         child: Center(
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 150),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: selected ? selectedColor.withValues(alpha: 0.12) : Colors.transparent,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Icon(
-              selected ? destination.selectedIcon : destination.icon,
-              color: selected ? selectedColor : unselectedColor,
-            ),
+          child: Icon(
+            selected ? destination.selectedIcon : destination.icon,
+            color: selected ? selectedColor : unselectedColor,
           ),
         ),
       ),

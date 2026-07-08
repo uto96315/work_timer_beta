@@ -74,8 +74,9 @@ class TimeField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     return InkWell(
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(14),
       onTap: () async {
         final picked = await showCupertinoTimePicker(context, value);
         if (picked != null) onChanged(picked);
@@ -83,19 +84,24 @@ class TimeField extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+          color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
+          borderRadius: BorderRadius.circular(14),
         ),
         child: Row(
           children: [
-            Icon(icon, color: Theme.of(context).colorScheme.primary),
+            Icon(icon, size: 20, color: scheme.primary),
             const SizedBox(width: 12),
-            Text(label, style: Theme.of(context).textTheme.bodyMedium),
-            const Spacer(),
+            Expanded(
+              child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
+            ),
             Text(
               _formatTime(value),
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant, fontWeight: FontWeight.w600),
             ),
+            const SizedBox(width: 4),
+            Icon(Icons.chevron_right_rounded, color: scheme.outline, size: 20),
           ],
         ),
       ),

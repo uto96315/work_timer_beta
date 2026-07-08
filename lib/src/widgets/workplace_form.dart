@@ -6,10 +6,18 @@ import '../models/industry.dart';
 import '../models/workplace.dart';
 import '../providers/auth_providers.dart';
 import '../providers/firebase_providers.dart';
+import 'settings_ui.dart';
 import 'time_field.dart';
+
+const _unset = '未設定';
 
 /// Create/edit form for a [Workplace]. Shared between the settings screen
 /// and the onboarding flow's setup step.
+///
+/// When editing an existing workplace, every field saves itself immediately
+/// (on picker selection or once a text field loses focus) — there's no
+/// separate save button to press. Creating a brand new workplace still uses
+/// an explicit submit button, since required fields start out empty/invalid.
 class WorkplaceForm extends ConsumerStatefulWidget {
   const WorkplaceForm({
     super.key,
@@ -34,11 +42,16 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
   late final TextEditingController _wageController;
   late final TextEditingController _breakController;
   late final TextEditingController _overtimeController;
+  late final FocusNode _wageFocus;
+  late final FocusNode _breakFocus;
+  late final FocusNode _overtimeFocus;
   late TimeOfDay _startTime;
   late TimeOfDay _endTime;
   late TimeOfDay _breakStartTime;
   Industry? _industry;
   EmploymentType? _employmentType;
+
+  bool get _isEditing => widget.workplace != null;
 
   @override
   void initState() {
@@ -53,6 +66,14 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
     _breakStartTime = _parseTime(w?.breakStartTime) ?? const TimeOfDay(hour: 12, minute: 0);
     _industry = w?.industry;
     _employmentType = w?.employmentType;
+
+    _wageFocus = FocusNode()..addListener(() => _onFocusChange(_wageFocus));
+    _breakFocus = FocusNode()..addListener(() => _onFocusChange(_breakFocus));
+    _overtimeFocus = FocusNode()..addListener(() => _onFocusChange(_overtimeFocus));
+  }
+
+  void _onFocusChange(FocusNode node) {
+    if (!node.hasFocus) _autoSave();
   }
 
   TimeOfDay? _parseTime(String? hhmm) {
@@ -69,16 +90,32 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
     _wageController.dispose();
     _breakController.dispose();
     _overtimeController.dispose();
+    _wageFocus.dispose();
+    _breakFocus.dispose();
+    _overtimeFocus.dispose();
     super.dispose();
   }
 
-  Future<void> _save() async {
+  /// Used while editing an existing workplace — silently does nothing if a
+  /// text field is currently invalid, since there's no submit button to
+  /// surface the error against.
+  Future<void> _autoSave() async {
+    if (!_isEditing) return;
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    await _persist();
+  }
+
+  Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
+    await _persist();
+    if (mounted) widget.onSaved?.call();
+  }
+
+  Future<void> _persist() async {
     final uid = ref.read(currentUidProvider);
     if (uid == null) return;
     final repo = ref.read(workplaceRepositoryProvider);
     final existing = widget.workplace;
-    final now = DateTime.now();
 
     if (existing == null) {
       await repo.create(
@@ -93,7 +130,7 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
           breakMinutes: int.parse(_breakController.text),
           breakStartTime: _formatTime(_breakStartTime),
           overtimeRatePercent: int.parse(_overtimeController.text),
-          createdAt: now,
+          createdAt: DateTime.now(),
         ),
       );
     } else {
@@ -111,90 +148,94 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
         ),
       );
     }
+  }
 
-    if (mounted) {
-      widget.onSaved?.call();
-    }
+  void _onPickerChanged(VoidCallback apply) {
+    setState(apply);
+    if (_isEditing) _autoSave();
   }
 
   @override
   Widget build(BuildContext context) {
     return Form(
       key: _formKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: SettingsSection(
+        icon: Icons.storefront_outlined,
+        title: '勤務先',
         children: [
           if (widget.showOptionalDetails) ...[
-            DropdownButtonFormField<Industry?>(
-              initialValue: _industry,
-              decoration: const InputDecoration(labelText: '業種（任意）'),
-              items: [
-                const DropdownMenuItem(value: null, child: Text('未設定')),
-                for (final industry in Industry.values)
-                  DropdownMenuItem(value: industry, child: Text(industry.label)),
-              ],
-              onChanged: (v) => setState(() => _industry = v),
+            SettingsPickerRow<Industry?>(
+              label: '業種',
+              value: _industry,
+              options: [null, ...Industry.values],
+              labelOf: (v) => v?.label ?? _unset,
+              onChanged: (v) => _onPickerChanged(() => _industry = v),
             ),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<EmploymentType?>(
-              initialValue: _employmentType,
-              decoration: const InputDecoration(labelText: '雇用形態（任意）'),
-              items: [
-                const DropdownMenuItem(value: null, child: Text('未設定')),
-                for (final type in EmploymentType.values)
-                  DropdownMenuItem(value: type, child: Text(type.label)),
-              ],
-              onChanged: (v) => setState(() => _employmentType = v),
+            const SizedBox(height: 10),
+            SettingsPickerRow<EmploymentType?>(
+              label: '雇用形態',
+              value: _employmentType,
+              options: [null, ...EmploymentType.values],
+              labelOf: (v) => v?.label ?? _unset,
+              onChanged: (v) => _onPickerChanged(() => _employmentType = v),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
           ],
           TextFormField(
             controller: _wageController,
+            focusNode: _wageFocus,
             decoration: const InputDecoration(labelText: '時給（円）'),
             keyboardType: TextInputType.number,
+            textInputAction: TextInputAction.done,
             validator: (v) => (v == null || int.tryParse(v) == null) ? '数値を入力してください' : null,
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 10),
           TimeField(
             label: '始業時刻',
             icon: Icons.wb_sunny_outlined,
             value: _startTime,
-            onChanged: (t) => setState(() => _startTime = t),
+            onChanged: (t) => _onPickerChanged(() => _startTime = t),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           TimeField(
             label: '終業時刻（定時）',
             icon: Icons.bedtime_outlined,
             value: _endTime,
-            onChanged: (t) => setState(() => _endTime = t),
+            onChanged: (t) => _onPickerChanged(() => _endTime = t),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           TimeField(
             label: '休憩開始',
             icon: Icons.restaurant_outlined,
             value: _breakStartTime,
-            onChanged: (t) => setState(() => _breakStartTime = t),
+            onChanged: (t) => _onPickerChanged(() => _breakStartTime = t),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           TextFormField(
             controller: _breakController,
+            focusNode: _breakFocus,
             decoration: const InputDecoration(labelText: '休憩時間（分）'),
             keyboardType: TextInputType.number,
+            textInputAction: TextInputAction.done,
             validator: (v) => (v == null || int.tryParse(v) == null) ? '数値を入力してください' : null,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           TextFormField(
             controller: _overtimeController,
+            focusNode: _overtimeFocus,
             decoration: const InputDecoration(
               labelText: '残業時の時給アップ率（%）',
               helperText: '定時を過ぎたら時給が何%増えるか。目安は25%（法律上の最低ライン）',
               helperMaxLines: 2,
             ),
             keyboardType: TextInputType.number,
+            textInputAction: TextInputAction.done,
             validator: (v) => (v == null || int.tryParse(v) == null) ? '数値を入力してください' : null,
           ),
-          const SizedBox(height: 32),
-          FilledButton(onPressed: _save, child: const Text('保存')),
+          if (!_isEditing) ...[
+            const SizedBox(height: 20),
+            FilledButton(onPressed: _submit, child: const Text('登録する')),
+          ],
         ],
       ),
     );

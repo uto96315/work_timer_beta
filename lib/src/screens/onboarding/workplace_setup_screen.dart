@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../widgets/settings_ui.dart';
 import '../../widgets/workplace_form.dart';
 
 /// The final onboarding step: entering the workplace's pay/schedule info.
@@ -12,7 +13,7 @@ class WorkplaceSetupScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return KeyboardDoneScaffold(
       appBar: AppBar(title: const Text('勤務先の登録')),
       body: Column(
         children: [
