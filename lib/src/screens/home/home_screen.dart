@@ -175,6 +175,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         .undoClockOut(uid, workplaceId, entryId);
   }
 
+  Future<void> _startExtraBreak(TimeEntry entry, String workplaceId) async {
+    final uid = ref.read(currentUidProvider);
+    if (uid == null) return;
+    await ref
+        .read(timeEntryRepositoryProvider)
+        .startExtraBreak(uid, workplaceId, entry);
+  }
+
+  Future<void> _endExtraBreak(TimeEntry entry, String workplaceId) async {
+    final uid = ref.read(currentUidProvider);
+    if (uid == null) return;
+    await ref
+        .read(timeEntryRepositoryProvider)
+        .endExtraBreak(uid, workplaceId, entry);
+  }
+
   @override
   Widget build(BuildContext context) {
     final workplaceAsync = ref.watch(primaryWorkplaceProvider);
@@ -196,6 +212,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               onEditBreakStart: _editBreakStart,
               onClockOut: _clockOut,
               onUndoClockOut: _undoClockOut,
+              onStartExtraBreak: _startExtraBreak,
+              onEndExtraBreak: _endExtraBreak,
             );
           },
         ),
@@ -212,6 +230,8 @@ class _HomeContent extends ConsumerWidget {
     required this.onEditBreakStart,
     required this.onClockOut,
     required this.onUndoClockOut,
+    required this.onStartExtraBreak,
+    required this.onEndExtraBreak,
   });
 
   final Workplace workplace;
@@ -220,6 +240,8 @@ class _HomeContent extends ConsumerWidget {
   final Future<void> Function(TimeEntry, Workplace, DateTime) onEditBreakStart;
   final Future<void> Function(String, String) onClockOut;
   final Future<void> Function(String, String) onUndoClockOut;
+  final Future<void> Function(TimeEntry, String) onStartExtraBreak;
+  final Future<void> Function(TimeEntry, String) onEndExtraBreak;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -333,6 +355,15 @@ class _HomeContent extends ConsumerWidget {
               onEditBreakStart: todayEntry == null
                   ? null
                   : () => onEditBreakStart(todayEntry, workplace, today),
+              onStartExtraBreak: activeEntry == null
+                  ? null
+                  : () => onStartExtraBreak(activeEntry, workplace.id),
+              onEndExtraBreak: activeEntry == null
+                  ? null
+                  : () => onEndExtraBreak(activeEntry, workplace.id),
+              isOnExtraBreak: activeEntry != null &&
+                  activeEntry.extraBreaks.isNotEmpty &&
+                  activeEntry.extraBreaks.last.end == null,
             ),
             const SizedBox(height: 16),
             Row(
@@ -583,10 +614,19 @@ class _EarningsHeroCard extends StatelessWidget {
 }
 
 class _DayTimeline extends StatelessWidget {
-  const _DayTimeline({required this.blocks, this.onEditBreakStart});
+  const _DayTimeline({
+    required this.blocks,
+    this.onEditBreakStart,
+    this.onStartExtraBreak,
+    this.onEndExtraBreak,
+    this.isOnExtraBreak = false,
+  });
 
   final List<ScheduleBlock> blocks;
   final VoidCallback? onEditBreakStart;
+  final VoidCallback? onStartExtraBreak;
+  final VoidCallback? onEndExtraBreak;
+  final bool isOnExtraBreak;
 
   @override
   Widget build(BuildContext context) {
@@ -594,26 +634,49 @@ class _DayTimeline extends StatelessWidget {
       // No schedule blocks left to show (e.g. an extremely late clock-in
       // pushed the start past the scheduled end) — still offer a way to log
       // a break instead of hiding the whole card.
-      if (onEditBreakStart == null) return const SizedBox.shrink();
+      if (onEditBreakStart == null && onStartExtraBreak == null) {
+        return const SizedBox.shrink();
+      }
       return Card(
         margin: EdgeInsets.zero,
         clipBehavior: Clip.antiAlias,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(12, 10, 16, 10),
-          child: _AddBreakButton(onPressed: onEditBreakStart!),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (onEditBreakStart != null)
+                _AddBreakButton(onPressed: onEditBreakStart!),
+              if (onStartExtraBreak != null) ...[
+                if (onEditBreakStart != null) const SizedBox(height: 8),
+                _ExtraBreakButton(
+                  isOnBreak: isOnExtraBreak,
+                  onPressed: isOnExtraBreak ? onEndExtraBreak : onStartExtraBreak,
+                ),
+              ],
+            ],
+          ),
         ),
       );
     }
 
     var totalSeconds = 0;
     var elapsedSeconds = 0;
+    var overtimeElapsedSeconds = 0;
+    var hasOvertimeBlock = false;
     for (final block in blocks) {
       final blockSeconds = block.end.difference(block.start).inSeconds;
       totalSeconds += blockSeconds;
+      var doneSeconds = 0;
       if (block.state == BlockState.done) {
-        elapsedSeconds += blockSeconds;
+        doneSeconds = blockSeconds;
       } else if (block.state == BlockState.inProgress) {
-        elapsedSeconds += (blockSeconds * block.progress).round();
+        doneSeconds = (blockSeconds * block.progress).round();
+      }
+      elapsedSeconds += doneSeconds;
+      if (block.isOvertime) {
+        hasOvertimeBlock = true;
+        overtimeElapsedSeconds += doneSeconds;
       }
     }
     final overallProgress = totalSeconds == 0
@@ -622,7 +685,7 @@ class _DayTimeline extends StatelessWidget {
     final remaining = Duration(
       seconds: (totalSeconds - elapsedSeconds).clamp(0, totalSeconds),
     );
-    final hasBreak = blocks.any((b) => b.isBreak);
+    final hasBreak = blocks.any((b) => b.isBreak && !b.isExtraBreak);
 
     return Card(
       margin: EdgeInsets.zero,
@@ -632,6 +695,8 @@ class _DayTimeline extends StatelessWidget {
           _TimelineProgressHeader(
             progress: overallProgress,
             remaining: remaining,
+            isOvertime: hasOvertimeBlock,
+            overtimeElapsed: Duration(seconds: overtimeElapsedSeconds),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
@@ -641,7 +706,7 @@ class _DayTimeline extends StatelessWidget {
                   _BlockRow(
                     block: blocks[i],
                     isLast: i == blocks.length - 1,
-                    onEditBreakStart: blocks[i].isBreak
+                    onEditBreakStart: blocks[i].isBreak && !blocks[i].isExtraBreak
                         ? onEditBreakStart
                         : null,
                   ),
@@ -655,6 +720,17 @@ class _DayTimeline extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 0, 16, 10),
               child: _AddBreakButton(onPressed: onEditBreakStart!),
+            ),
+          // Always available while clocked in, so an ad-hoc break (most
+          // commonly taken during overtime) can be logged at any time —
+          // not just when the scheduled break is missing.
+          if (onStartExtraBreak != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 16, 10),
+              child: _ExtraBreakButton(
+                isOnBreak: isOnExtraBreak,
+                onPressed: isOnExtraBreak ? onEndExtraBreak : onStartExtraBreak,
+              ),
             ),
         ],
       ),
@@ -685,14 +761,60 @@ class _AddBreakButton extends StatelessWidget {
   }
 }
 
+/// Starts/stops an ad-hoc break on top of the scheduled one — the primary
+/// way to log a break taken during overtime, when there's no more schedule
+/// left to attach one to.
+class _ExtraBreakButton extends StatelessWidget {
+  const _ExtraBreakButton({required this.isOnBreak, required this.onPressed});
+
+  final bool isOnBreak;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    if (isOnBreak) {
+      return Align(
+        alignment: Alignment.centerLeft,
+        child: FilledButton.icon(
+          onPressed: onPressed,
+          icon: const Icon(Icons.play_arrow_rounded, size: 18),
+          label: const Text('休憩を終える'),
+          style: FilledButton.styleFrom(
+            backgroundColor: scheme.tertiary,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          ),
+        ),
+      );
+    }
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: TextButton.icon(
+        onPressed: onPressed,
+        icon: const Icon(Icons.free_breakfast_outlined, size: 18),
+        label: const Text('休憩に入る'),
+        style: TextButton.styleFrom(
+          padding: EdgeInsets.zero,
+          minimumSize: Size.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+      ),
+    );
+  }
+}
+
 class _TimelineProgressHeader extends StatelessWidget {
   const _TimelineProgressHeader({
     required this.progress,
     required this.remaining,
+    required this.isOvertime,
+    required this.overtimeElapsed,
   });
 
   final double progress;
   final Duration remaining;
+  final bool isOvertime;
+  final Duration overtimeElapsed;
 
   String get _remainingLabel {
     if (progress >= 1) return '本日のスケジュール終了';
@@ -702,8 +824,50 @@ class _TimelineProgressHeader extends StatelessWidget {
     return 'あと$h時間$m分';
   }
 
+  String get _overtimeLabel {
+    final h = overtimeElapsed.inHours;
+    final m = overtimeElapsed.inMinutes % 60;
+    return h <= 0 ? '残業 $m分' : '残業 $h時間$m分';
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (isOvertime) {
+      return Container(
+        padding: const EdgeInsets.fromLTRB(18, 12, 18, 12),
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFFF8A5C), Color(0xFFE85D3D)],
+          ),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.bolt_rounded, color: Colors.white, size: 22),
+            const SizedBox(width: 8),
+            const Text(
+              '残業中',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const Spacer(),
+            Text(
+              _overtimeLabel,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     final percent = (progress * 100).round();
     return Container(
       padding: const EdgeInsets.fromLTRB(18, 12, 18, 12),
@@ -770,7 +934,10 @@ class _BlockRow extends StatelessWidget {
         '${_timeFormat.format(block.start)} 〜 ${_timeFormat.format(block.end)}';
     final isDone = block.state == BlockState.done;
     final isInProgress = block.state == BlockState.inProgress;
-    final accentColor = block.isBreak ? scheme.tertiary : scheme.primary;
+    final overtimeColor = Colors.orange.shade800;
+    final accentColor = block.isBreak
+        ? (block.isExtraBreak ? Colors.deepOrange.shade400 : scheme.tertiary)
+        : (block.isOvertime ? overtimeColor : scheme.primary);
     final lineColor = isDone
         ? accentColor.withValues(alpha: 0.5)
         : scheme.outlineVariant;
@@ -823,12 +990,20 @@ class _BlockRow extends StatelessWidget {
                           ),
                         ),
                       ),
+                      if (block.isOvertime && !block.isBreak) ...[
+                        _RowBadge(
+                          label: '残業',
+                          color: isDone
+                              ? overtimeColor.withValues(alpha: 0.6)
+                              : overtimeColor,
+                        ),
+                      ],
                       if (block.isBreak) ...[
                         _RowBadge(
                           label: '休憩',
                           color: isDone
-                              ? scheme.tertiary.withValues(alpha: 0.6)
-                              : scheme.tertiary,
+                              ? accentColor.withValues(alpha: 0.6)
+                              : accentColor,
                         ),
                         if (onEditBreakStart != null)
                           IconButton(

@@ -10,6 +10,8 @@ class ScheduleBlock {
     required this.isBreak,
     required this.state,
     this.progress = 0,
+    this.isOvertime = false,
+    this.isExtraBreak = false,
   });
 
   final DateTime start;
@@ -19,6 +21,23 @@ class ScheduleBlock {
 
   /// 0..1, only meaningful when [state] is [BlockState.inProgress].
   final double progress;
+
+  /// True once this block starts at or after the scheduled end ("teiji") —
+  /// i.e. it represents unscheduled overtime rather than the planned shift.
+  final bool isOvertime;
+
+  /// True for an ad-hoc break the user started/stopped live (see
+  /// [TimeEntry.extraBreaks]), as opposed to the workplace's single
+  /// scheduled break.
+  final bool isExtraBreak;
+}
+
+class _BreakWindow {
+  const _BreakWindow(this.start, this.end, {required this.isExtra});
+
+  final DateTime start;
+  final DateTime end;
+  final bool isExtra;
 }
 
 DateTime _dayAt(DateTime day, String hhmm) {
@@ -34,8 +53,11 @@ DateTime _nextHourBoundary(DateTime t) {
 }
 
 /// Splits the workday into blocks aligned to clock-hour boundaries (shorter
-/// at the edges of the shift and the break), for rendering as a
-/// checklist-style daily timeline.
+/// at the edges of the shift and any breaks), for rendering as a
+/// checklist-style daily timeline. Once the actual worked time (or "now",
+/// while still clocked in) passes the scheduled end, blocks keep being
+/// generated into that overtime — flagged via [ScheduleBlock.isOvertime] —
+/// instead of stopping at the original schedule.
 List<ScheduleBlock> buildDaySchedule({
   required Workplace workplace,
   required DateTime day,
@@ -60,6 +82,10 @@ List<ScheduleBlock> buildDaySchedule({
       ? overrideEnd
       : defaultEnd;
 
+  // Once actual worked time runs past the scheduled end, keep the timeline
+  // going instead of cutting it off at `end`.
+  final effectiveEnd = (workedEnd != null && workedEnd.isAfter(end)) ? workedEnd : end;
+
   // The user can shift today's break start away from the workplace default;
   // fall back to the default if the override no longer fits the shift.
   final defaultBreakStart = _dayAt(day, workplace.breakStartTime);
@@ -78,15 +104,29 @@ List<ScheduleBlock> buildDaySchedule({
   // simply isn't part of the timeline, rather than showing as "missed".
   final start = clockIn ?? scheduledStart;
 
+  final breakWindows = <_BreakWindow>[
+    if (breakEnd.isAfter(breakStart)) _BreakWindow(breakStart, breakEnd, isExtra: false),
+    for (final b in activeEntry?.extraBreaks ?? const <ExtraBreak>[])
+      if ((b.end ?? workedEnd ?? b.start).isAfter(b.start))
+        _BreakWindow(b.start, b.end ?? workedEnd ?? b.start, isExtra: true),
+  ]..sort((a, b) => a.start.compareTo(b.start));
+
+  // Whether the shift is still open, i.e. `workedEnd` is the live "now"
+  // rather than a fixed clock-out — a block ending exactly at `workedEnd`
+  // is still ongoing in that case, not finished.
+  final isShiftOpen = activeEntry != null && activeEntry.clockOut == null;
+
   BlockState workState(DateTime blockStart, DateTime blockEnd) {
     if (clockIn == null) return BlockState.upcoming;
-    if (!blockEnd.isAfter(workedEnd!)) return BlockState.done;
+    final isDone =
+        isShiftOpen ? blockEnd.isBefore(workedEnd!) : !blockEnd.isAfter(workedEnd!);
+    if (isDone) return BlockState.done;
     if (blockStart.isBefore(workedEnd)) return BlockState.inProgress;
     return BlockState.upcoming;
   }
 
   BlockState timeState(DateTime blockStart, DateTime blockEnd) {
-    if (!now.isBefore(blockEnd)) return BlockState.done;
+    if (blockEnd.isBefore(now)) return BlockState.done;
     if (now.isAfter(blockStart)) return BlockState.inProgress;
     return BlockState.upcoming;
   }
@@ -100,31 +140,48 @@ List<ScheduleBlock> buildDaySchedule({
 
   final blocks = <ScheduleBlock>[];
   var cursor = start;
-  while (cursor.isBefore(end)) {
-    if (cursor == breakStart) {
-      final state = timeState(breakStart, breakEnd);
-      blocks.add(ScheduleBlock(
-        start: breakStart,
-        end: breakEnd,
-        isBreak: true,
-        state: state,
-        progress: state == BlockState.inProgress ? progressWithin(breakStart, breakEnd, now) : 0,
-      ));
-      cursor = breakEnd;
-      continue;
+  var breakIdx = 0;
+  while (cursor.isBefore(effectiveEnd)) {
+    if (breakIdx < breakWindows.length && !breakWindows[breakIdx].start.isAfter(cursor)) {
+      final window = breakWindows[breakIdx];
+      breakIdx++;
+      final windowEnd = window.end.isAfter(effectiveEnd) ? effectiveEnd : window.end;
+      if (windowEnd.isAfter(cursor)) {
+        final state = timeState(cursor, windowEnd);
+        blocks.add(ScheduleBlock(
+          start: cursor,
+          end: windowEnd,
+          isBreak: true,
+          isExtraBreak: window.isExtra,
+          isOvertime: !cursor.isBefore(end),
+          state: state,
+          progress: state == BlockState.inProgress ? progressWithin(cursor, windowEnd, now) : 0,
+        ));
+        cursor = windowEnd;
+        continue;
+      }
     }
 
     var blockEnd = _nextHourBoundary(cursor);
-    if (breakStart.isAfter(cursor) && breakStart.isBefore(blockEnd)) {
-      blockEnd = breakStart;
+    if (breakIdx < breakWindows.length &&
+        breakWindows[breakIdx].start.isAfter(cursor) &&
+        breakWindows[breakIdx].start.isBefore(blockEnd)) {
+      blockEnd = breakWindows[breakIdx].start;
     }
-    if (blockEnd.isAfter(end)) blockEnd = end;
+    // Clamp to the scheduled end first so a block never straddles the
+    // regular/overtime boundary, then to effectiveEnd for the final block.
+    if (cursor.isBefore(end) && blockEnd.isAfter(end)) {
+      blockEnd = end;
+    } else if (blockEnd.isAfter(effectiveEnd)) {
+      blockEnd = effectiveEnd;
+    }
 
     final state = workState(cursor, blockEnd);
     blocks.add(ScheduleBlock(
       start: cursor,
       end: blockEnd,
       isBreak: false,
+      isOvertime: !cursor.isBefore(end),
       state: state,
       progress: state == BlockState.inProgress ? progressWithin(cursor, blockEnd, workedEnd!) : 0,
     ));

@@ -173,41 +173,45 @@ class SettingsAmountField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          decoration: BoxDecoration(
-            color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
-              ),
-              SizedBox(
-                width: 96,
-                child: TextFormField(
-                  controller: controller,
-                  focusNode: focusNode,
-                  keyboardType: keyboardType,
-                  textInputAction: textInputAction,
-                  validator: validator,
-                  textAlign: TextAlign.right,
-                  style: valueStyle,
-                  decoration: InputDecoration(
-                    isCollapsed: true,
-                    filled: false,
-                    border: InputBorder.none,
-                    suffixText: suffixText,
-                    suffixStyle: valueStyle,
-                    errorStyle: Theme.of(
-                      context,
-                    ).textTheme.labelSmall?.copyWith(color: scheme.error),
-                    errorMaxLines: 2,
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => focusNode?.requestFocus(),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
+                ),
+                SizedBox(
+                  width: 96,
+                  child: TextFormField(
+                    controller: controller,
+                    focusNode: focusNode,
+                    keyboardType: keyboardType,
+                    textInputAction: textInputAction,
+                    validator: validator,
+                    textAlign: TextAlign.right,
+                    style: valueStyle,
+                    decoration: InputDecoration(
+                      isCollapsed: true,
+                      filled: false,
+                      border: InputBorder.none,
+                      suffixText: suffixText,
+                      suffixStyle: valueStyle,
+                      errorStyle: Theme.of(
+                        context,
+                      ).textTheme.labelSmall?.copyWith(color: scheme.error),
+                      errorMaxLines: 2,
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
         if (helperText != null)

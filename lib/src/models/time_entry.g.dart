@@ -6,6 +6,17 @@ part of 'time_entry.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
+_ExtraBreak _$ExtraBreakFromJson(Map<String, dynamic> json) => _ExtraBreak(
+  start: const TimestampConverter().fromJson(json['start']),
+  end: const NullableTimestampConverter().fromJson(json['end']),
+);
+
+Map<String, dynamic> _$ExtraBreakToJson(_ExtraBreak instance) =>
+    <String, dynamic>{
+      'start': const TimestampConverter().toJson(instance.start),
+      'end': const NullableTimestampConverter().toJson(instance.end),
+    };
+
 _TimeEntry _$TimeEntryFromJson(Map<String, dynamic> json) => _TimeEntry(
   id: json['id'] as String,
   workplaceId: json['workplaceId'] as String,
@@ -19,6 +30,11 @@ _TimeEntry _$TimeEntryFromJson(Map<String, dynamic> json) => _TimeEntry(
   scheduledEndOverride: const NullableTimestampConverter().fromJson(
     json['scheduledEndOverride'],
   ),
+  extraBreaks:
+      (json['extraBreaks'] as List<dynamic>?)
+          ?.map((e) => ExtraBreak.fromJson(e as Map<String, dynamic>))
+          .toList() ??
+      const <ExtraBreak>[],
   isModified: json['isModified'] as bool? ?? false,
   isAutoClockedIn: json['isAutoClockedIn'] as bool? ?? false,
   originalClockIn: const NullableTimestampConverter().fromJson(
@@ -46,6 +62,7 @@ Map<String, dynamic> _$TimeEntryToJson(_TimeEntry instance) =>
       'scheduledEndOverride': const NullableTimestampConverter().toJson(
         instance.scheduledEndOverride,
       ),
+      'extraBreaks': instance.extraBreaks,
       'isModified': instance.isModified,
       'isAutoClockedIn': instance.isAutoClockedIn,
       'originalClockIn': const NullableTimestampConverter().toJson(

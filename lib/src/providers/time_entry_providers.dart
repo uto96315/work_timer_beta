@@ -47,11 +47,16 @@ EarningsResult? liveEarnings(Ref ref) {
   final entry = ref.watch(activeTimeEntryProvider).value;
   final now = ref.watch(secondTickerProvider).value ?? DateTime.now();
   if (workplace == null || entry == null) return null;
+  final extraBreakSeconds = entry.extraBreaks.fold<int>(0, (sum, b) {
+    final end = b.end ?? now;
+    return sum + end.difference(b.start).inSeconds.clamp(0, 1 << 31);
+  });
   return calculateLiveEarnings(
     workplace: workplace,
     clockIn: entry.clockIn,
     breakMinutes: entry.breakMinutes,
     now: now,
     scheduledEndOverride: entry.scheduledEndOverride,
+    extraBreakSeconds: extraBreakSeconds,
   );
 }

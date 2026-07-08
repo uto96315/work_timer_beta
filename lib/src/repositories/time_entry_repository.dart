@@ -149,4 +149,46 @@ class TimeEntryRepository {
           : Timestamp.fromDate(scheduledEnd),
     });
   }
+
+  /// Starts an ad-hoc break on top of the workplace's scheduled one — used
+  /// for breaks taken during overtime, which the fixed schedule doesn't
+  /// already account for. No-ops if the last break is still open.
+  Future<void> startExtraBreak(
+    String uid,
+    String workplaceId,
+    TimeEntry entry,
+  ) async {
+    if (entry.extraBreaks.isNotEmpty && entry.extraBreaks.last.end == null) {
+      return;
+    }
+    final updated = [...entry.extraBreaks, ExtraBreak(start: DateTime.now())];
+    await _writeExtraBreaks(uid, workplaceId, entry.id, updated);
+  }
+
+  /// Ends the currently-open ad-hoc break, if any.
+  Future<void> endExtraBreak(
+    String uid,
+    String workplaceId,
+    TimeEntry entry,
+  ) async {
+    if (entry.extraBreaks.isEmpty) return;
+    final last = entry.extraBreaks.last;
+    if (last.end != null) return;
+    final updated = [
+      ...entry.extraBreaks.sublist(0, entry.extraBreaks.length - 1),
+      last.copyWith(end: DateTime.now()),
+    ];
+    await _writeExtraBreaks(uid, workplaceId, entry.id, updated);
+  }
+
+  Future<void> _writeExtraBreaks(
+    String uid,
+    String workplaceId,
+    String entryId,
+    List<ExtraBreak> breaks,
+  ) async {
+    await _collection(uid, workplaceId).doc(entryId).update({
+      'extraBreaks': breaks.map((b) => b.toJson()).toList(),
+    });
+  }
 }

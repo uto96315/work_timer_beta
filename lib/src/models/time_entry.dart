@@ -6,6 +6,21 @@ import '../util/firestore_converters.dart';
 part 'time_entry.freezed.dart';
 part 'time_entry.g.dart';
 
+/// An ad-hoc break the user starts/stops live during a shift, on top of the
+/// workplace's single scheduled break — mainly for breaks taken during
+/// overtime, which the fixed schedule doesn't already account for.
+/// [end] is null while the break is still ongoing.
+@freezed
+abstract class ExtraBreak with _$ExtraBreak {
+  const factory ExtraBreak({
+    @TimestampConverter() required DateTime start,
+    @NullableTimestampConverter() DateTime? end,
+  }) = _ExtraBreak;
+
+  factory ExtraBreak.fromJson(Map<String, dynamic> json) =>
+      _$ExtraBreakFromJson(json);
+}
+
 /// A single day's clock-in/clock-out record for a workplace.
 @freezed
 abstract class TimeEntry with _$TimeEntry {
@@ -22,6 +37,9 @@ abstract class TimeEntry with _$TimeEntry {
     /// Overrides the workplace's default scheduled end time for this day
     /// only, e.g. when a late/early clock-in shifts the whole shift.
     @NullableTimestampConverter() DateTime? scheduledEndOverride,
+    /// Ad-hoc breaks started/stopped during the shift, separate from the
+    /// scheduled break above. Ordered by start time.
+    @Default(<ExtraBreak>[]) List<ExtraBreak> extraBreaks,
     @Default(false) bool isModified,
     /// True when clockIn was created automatically at the scheduled start
     /// time rather than by the user tapping a button.

@@ -38,17 +38,25 @@ EarningsResult calculateLiveEarnings({
   required int breakMinutes,
   required DateTime now,
   DateTime? scheduledEndOverride,
+  int extraBreakSeconds = 0,
 }) {
   final scheduledEnd = scheduledEndOverride ?? _dayAt(clockIn, workplace.endTime);
   final breakSeconds = breakMinutes * 60;
 
   final regularWindowEnd = now.isBefore(scheduledEnd) ? now : scheduledEnd;
-  final regularSeconds = (regularWindowEnd.difference(clockIn).inSeconds - breakSeconds)
-      .clamp(0, 1 << 31);
+  final regularSecondsRaw = regularWindowEnd.difference(clockIn).inSeconds - breakSeconds;
 
-  final overtimeSeconds = now.isAfter(scheduledEnd)
+  var overtimeSeconds = now.isAfter(scheduledEnd)
       ? now.difference(scheduledEnd).inSeconds
       : 0;
+
+  // Ad-hoc breaks are mainly taken during overtime, so come out of it
+  // first; any leftover (e.g. one taken during regular hours) spills into
+  // the regular window instead.
+  final fromOvertime = extraBreakSeconds.clamp(0, overtimeSeconds);
+  overtimeSeconds -= fromOvertime;
+  final regularSeconds =
+      (regularSecondsRaw - (extraBreakSeconds - fromOvertime)).clamp(0, 1 << 31);
 
   final regularRate = workplace.hourlyWage / 3600;
   final overtimeRate =
@@ -70,12 +78,18 @@ EarningsResult calculateEntryEarnings({
   required TimeEntry entry,
   required DateTime now,
 }) {
+  final endMarker = entry.clockOut ?? now;
+  final extraBreakSeconds = entry.extraBreaks.fold<int>(0, (sum, b) {
+    final end = b.end ?? endMarker;
+    return sum + end.difference(b.start).inSeconds.clamp(0, 1 << 31);
+  });
   return calculateLiveEarnings(
     workplace: workplace,
     clockIn: entry.clockIn,
     breakMinutes: entry.breakMinutes,
-    now: entry.clockOut ?? now,
+    now: endMarker,
     scheduledEndOverride: entry.scheduledEndOverride,
+    extraBreakSeconds: extraBreakSeconds,
   );
 }
 
