@@ -16,7 +16,9 @@ T _$identity<T>(T value) => value;
 mixin _$TimeEntry {
 
  String get id; String get workplaceId;/// Local calendar date this entry belongs to, "yyyy-MM-dd".
- String get date;@TimestampConverter() DateTime get clockIn;@NullableTimestampConverter() DateTime? get clockOut; int get breakMinutes; bool get isModified;@NullableTimestampConverter() DateTime? get originalClockIn;@NullableTimestampConverter() DateTime? get originalClockOut;/// Reserved for the paid GPS proof-of-attendance feature; unused in MVP.
+ String get date;@TimestampConverter() DateTime get clockIn;@NullableTimestampConverter() DateTime? get clockOut; int get breakMinutes; bool get isModified;/// True when clockIn was created automatically at the scheduled start
+/// time rather than by the user tapping a button.
+ bool get isAutoClockedIn;@NullableTimestampConverter() DateTime? get originalClockIn;@NullableTimestampConverter() DateTime? get originalClockOut;/// Reserved for the paid GPS proof-of-attendance feature; unused in MVP.
 @GeoPointConverter() GeoPoint? get location; String? get note;@TimestampConverter() DateTime get createdAt;
 /// Create a copy of TimeEntry
 /// with the given fields replaced by the non-null parameter values.
@@ -30,16 +32,16 @@ $TimeEntryCopyWith<TimeEntry> get copyWith => _$TimeEntryCopyWithImpl<TimeEntry>
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is TimeEntry&&(identical(other.id, id) || other.id == id)&&(identical(other.workplaceId, workplaceId) || other.workplaceId == workplaceId)&&(identical(other.date, date) || other.date == date)&&(identical(other.clockIn, clockIn) || other.clockIn == clockIn)&&(identical(other.clockOut, clockOut) || other.clockOut == clockOut)&&(identical(other.breakMinutes, breakMinutes) || other.breakMinutes == breakMinutes)&&(identical(other.isModified, isModified) || other.isModified == isModified)&&(identical(other.originalClockIn, originalClockIn) || other.originalClockIn == originalClockIn)&&(identical(other.originalClockOut, originalClockOut) || other.originalClockOut == originalClockOut)&&(identical(other.location, location) || other.location == location)&&(identical(other.note, note) || other.note == note)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is TimeEntry&&(identical(other.id, id) || other.id == id)&&(identical(other.workplaceId, workplaceId) || other.workplaceId == workplaceId)&&(identical(other.date, date) || other.date == date)&&(identical(other.clockIn, clockIn) || other.clockIn == clockIn)&&(identical(other.clockOut, clockOut) || other.clockOut == clockOut)&&(identical(other.breakMinutes, breakMinutes) || other.breakMinutes == breakMinutes)&&(identical(other.isModified, isModified) || other.isModified == isModified)&&(identical(other.isAutoClockedIn, isAutoClockedIn) || other.isAutoClockedIn == isAutoClockedIn)&&(identical(other.originalClockIn, originalClockIn) || other.originalClockIn == originalClockIn)&&(identical(other.originalClockOut, originalClockOut) || other.originalClockOut == originalClockOut)&&(identical(other.location, location) || other.location == location)&&(identical(other.note, note) || other.note == note)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,workplaceId,date,clockIn,clockOut,breakMinutes,isModified,originalClockIn,originalClockOut,location,note,createdAt);
+int get hashCode => Object.hash(runtimeType,id,workplaceId,date,clockIn,clockOut,breakMinutes,isModified,isAutoClockedIn,originalClockIn,originalClockOut,location,note,createdAt);
 
 @override
 String toString() {
-  return 'TimeEntry(id: $id, workplaceId: $workplaceId, date: $date, clockIn: $clockIn, clockOut: $clockOut, breakMinutes: $breakMinutes, isModified: $isModified, originalClockIn: $originalClockIn, originalClockOut: $originalClockOut, location: $location, note: $note, createdAt: $createdAt)';
+  return 'TimeEntry(id: $id, workplaceId: $workplaceId, date: $date, clockIn: $clockIn, clockOut: $clockOut, breakMinutes: $breakMinutes, isModified: $isModified, isAutoClockedIn: $isAutoClockedIn, originalClockIn: $originalClockIn, originalClockOut: $originalClockOut, location: $location, note: $note, createdAt: $createdAt)';
 }
 
 
@@ -50,7 +52,7 @@ abstract mixin class $TimeEntryCopyWith<$Res>  {
   factory $TimeEntryCopyWith(TimeEntry value, $Res Function(TimeEntry) _then) = _$TimeEntryCopyWithImpl;
 @useResult
 $Res call({
- String id, String workplaceId, String date,@TimestampConverter() DateTime clockIn,@NullableTimestampConverter() DateTime? clockOut, int breakMinutes, bool isModified,@NullableTimestampConverter() DateTime? originalClockIn,@NullableTimestampConverter() DateTime? originalClockOut,@GeoPointConverter() GeoPoint? location, String? note,@TimestampConverter() DateTime createdAt
+ String id, String workplaceId, String date,@TimestampConverter() DateTime clockIn,@NullableTimestampConverter() DateTime? clockOut, int breakMinutes, bool isModified, bool isAutoClockedIn,@NullableTimestampConverter() DateTime? originalClockIn,@NullableTimestampConverter() DateTime? originalClockOut,@GeoPointConverter() GeoPoint? location, String? note,@TimestampConverter() DateTime createdAt
 });
 
 
@@ -67,7 +69,7 @@ class _$TimeEntryCopyWithImpl<$Res>
 
 /// Create a copy of TimeEntry
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? workplaceId = null,Object? date = null,Object? clockIn = null,Object? clockOut = freezed,Object? breakMinutes = null,Object? isModified = null,Object? originalClockIn = freezed,Object? originalClockOut = freezed,Object? location = freezed,Object? note = freezed,Object? createdAt = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? workplaceId = null,Object? date = null,Object? clockIn = null,Object? clockOut = freezed,Object? breakMinutes = null,Object? isModified = null,Object? isAutoClockedIn = null,Object? originalClockIn = freezed,Object? originalClockOut = freezed,Object? location = freezed,Object? note = freezed,Object? createdAt = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,workplaceId: null == workplaceId ? _self.workplaceId : workplaceId // ignore: cast_nullable_to_non_nullable
@@ -76,6 +78,7 @@ as String,clockIn: null == clockIn ? _self.clockIn : clockIn // ignore: cast_nul
 as DateTime,clockOut: freezed == clockOut ? _self.clockOut : clockOut // ignore: cast_nullable_to_non_nullable
 as DateTime?,breakMinutes: null == breakMinutes ? _self.breakMinutes : breakMinutes // ignore: cast_nullable_to_non_nullable
 as int,isModified: null == isModified ? _self.isModified : isModified // ignore: cast_nullable_to_non_nullable
+as bool,isAutoClockedIn: null == isAutoClockedIn ? _self.isAutoClockedIn : isAutoClockedIn // ignore: cast_nullable_to_non_nullable
 as bool,originalClockIn: freezed == originalClockIn ? _self.originalClockIn : originalClockIn // ignore: cast_nullable_to_non_nullable
 as DateTime?,originalClockOut: freezed == originalClockOut ? _self.originalClockOut : originalClockOut // ignore: cast_nullable_to_non_nullable
 as DateTime?,location: freezed == location ? _self.location : location // ignore: cast_nullable_to_non_nullable
@@ -166,10 +169,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String workplaceId,  String date, @TimestampConverter()  DateTime clockIn, @NullableTimestampConverter()  DateTime? clockOut,  int breakMinutes,  bool isModified, @NullableTimestampConverter()  DateTime? originalClockIn, @NullableTimestampConverter()  DateTime? originalClockOut, @GeoPointConverter()  GeoPoint? location,  String? note, @TimestampConverter()  DateTime createdAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  String workplaceId,  String date, @TimestampConverter()  DateTime clockIn, @NullableTimestampConverter()  DateTime? clockOut,  int breakMinutes,  bool isModified,  bool isAutoClockedIn, @NullableTimestampConverter()  DateTime? originalClockIn, @NullableTimestampConverter()  DateTime? originalClockOut, @GeoPointConverter()  GeoPoint? location,  String? note, @TimestampConverter()  DateTime createdAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _TimeEntry() when $default != null:
-return $default(_that.id,_that.workplaceId,_that.date,_that.clockIn,_that.clockOut,_that.breakMinutes,_that.isModified,_that.originalClockIn,_that.originalClockOut,_that.location,_that.note,_that.createdAt);case _:
+return $default(_that.id,_that.workplaceId,_that.date,_that.clockIn,_that.clockOut,_that.breakMinutes,_that.isModified,_that.isAutoClockedIn,_that.originalClockIn,_that.originalClockOut,_that.location,_that.note,_that.createdAt);case _:
   return orElse();
 
 }
@@ -187,10 +190,10 @@ return $default(_that.id,_that.workplaceId,_that.date,_that.clockIn,_that.clockO
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String workplaceId,  String date, @TimestampConverter()  DateTime clockIn, @NullableTimestampConverter()  DateTime? clockOut,  int breakMinutes,  bool isModified, @NullableTimestampConverter()  DateTime? originalClockIn, @NullableTimestampConverter()  DateTime? originalClockOut, @GeoPointConverter()  GeoPoint? location,  String? note, @TimestampConverter()  DateTime createdAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  String workplaceId,  String date, @TimestampConverter()  DateTime clockIn, @NullableTimestampConverter()  DateTime? clockOut,  int breakMinutes,  bool isModified,  bool isAutoClockedIn, @NullableTimestampConverter()  DateTime? originalClockIn, @NullableTimestampConverter()  DateTime? originalClockOut, @GeoPointConverter()  GeoPoint? location,  String? note, @TimestampConverter()  DateTime createdAt)  $default,) {final _that = this;
 switch (_that) {
 case _TimeEntry():
-return $default(_that.id,_that.workplaceId,_that.date,_that.clockIn,_that.clockOut,_that.breakMinutes,_that.isModified,_that.originalClockIn,_that.originalClockOut,_that.location,_that.note,_that.createdAt);case _:
+return $default(_that.id,_that.workplaceId,_that.date,_that.clockIn,_that.clockOut,_that.breakMinutes,_that.isModified,_that.isAutoClockedIn,_that.originalClockIn,_that.originalClockOut,_that.location,_that.note,_that.createdAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -207,10 +210,10 @@ return $default(_that.id,_that.workplaceId,_that.date,_that.clockIn,_that.clockO
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String workplaceId,  String date, @TimestampConverter()  DateTime clockIn, @NullableTimestampConverter()  DateTime? clockOut,  int breakMinutes,  bool isModified, @NullableTimestampConverter()  DateTime? originalClockIn, @NullableTimestampConverter()  DateTime? originalClockOut, @GeoPointConverter()  GeoPoint? location,  String? note, @TimestampConverter()  DateTime createdAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  String workplaceId,  String date, @TimestampConverter()  DateTime clockIn, @NullableTimestampConverter()  DateTime? clockOut,  int breakMinutes,  bool isModified,  bool isAutoClockedIn, @NullableTimestampConverter()  DateTime? originalClockIn, @NullableTimestampConverter()  DateTime? originalClockOut, @GeoPointConverter()  GeoPoint? location,  String? note, @TimestampConverter()  DateTime createdAt)?  $default,) {final _that = this;
 switch (_that) {
 case _TimeEntry() when $default != null:
-return $default(_that.id,_that.workplaceId,_that.date,_that.clockIn,_that.clockOut,_that.breakMinutes,_that.isModified,_that.originalClockIn,_that.originalClockOut,_that.location,_that.note,_that.createdAt);case _:
+return $default(_that.id,_that.workplaceId,_that.date,_that.clockIn,_that.clockOut,_that.breakMinutes,_that.isModified,_that.isAutoClockedIn,_that.originalClockIn,_that.originalClockOut,_that.location,_that.note,_that.createdAt);case _:
   return null;
 
 }
@@ -222,7 +225,7 @@ return $default(_that.id,_that.workplaceId,_that.date,_that.clockIn,_that.clockO
 @JsonSerializable()
 
 class _TimeEntry implements TimeEntry {
-  const _TimeEntry({required this.id, required this.workplaceId, required this.date, @TimestampConverter() required this.clockIn, @NullableTimestampConverter() this.clockOut, this.breakMinutes = 0, this.isModified = false, @NullableTimestampConverter() this.originalClockIn, @NullableTimestampConverter() this.originalClockOut, @GeoPointConverter() this.location, this.note, @TimestampConverter() required this.createdAt});
+  const _TimeEntry({required this.id, required this.workplaceId, required this.date, @TimestampConverter() required this.clockIn, @NullableTimestampConverter() this.clockOut, this.breakMinutes = 0, this.isModified = false, this.isAutoClockedIn = false, @NullableTimestampConverter() this.originalClockIn, @NullableTimestampConverter() this.originalClockOut, @GeoPointConverter() this.location, this.note, @TimestampConverter() required this.createdAt});
   factory _TimeEntry.fromJson(Map<String, dynamic> json) => _$TimeEntryFromJson(json);
 
 @override final  String id;
@@ -233,6 +236,9 @@ class _TimeEntry implements TimeEntry {
 @override@NullableTimestampConverter() final  DateTime? clockOut;
 @override@JsonKey() final  int breakMinutes;
 @override@JsonKey() final  bool isModified;
+/// True when clockIn was created automatically at the scheduled start
+/// time rather than by the user tapping a button.
+@override@JsonKey() final  bool isAutoClockedIn;
 @override@NullableTimestampConverter() final  DateTime? originalClockIn;
 @override@NullableTimestampConverter() final  DateTime? originalClockOut;
 /// Reserved for the paid GPS proof-of-attendance feature; unused in MVP.
@@ -253,16 +259,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _TimeEntry&&(identical(other.id, id) || other.id == id)&&(identical(other.workplaceId, workplaceId) || other.workplaceId == workplaceId)&&(identical(other.date, date) || other.date == date)&&(identical(other.clockIn, clockIn) || other.clockIn == clockIn)&&(identical(other.clockOut, clockOut) || other.clockOut == clockOut)&&(identical(other.breakMinutes, breakMinutes) || other.breakMinutes == breakMinutes)&&(identical(other.isModified, isModified) || other.isModified == isModified)&&(identical(other.originalClockIn, originalClockIn) || other.originalClockIn == originalClockIn)&&(identical(other.originalClockOut, originalClockOut) || other.originalClockOut == originalClockOut)&&(identical(other.location, location) || other.location == location)&&(identical(other.note, note) || other.note == note)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _TimeEntry&&(identical(other.id, id) || other.id == id)&&(identical(other.workplaceId, workplaceId) || other.workplaceId == workplaceId)&&(identical(other.date, date) || other.date == date)&&(identical(other.clockIn, clockIn) || other.clockIn == clockIn)&&(identical(other.clockOut, clockOut) || other.clockOut == clockOut)&&(identical(other.breakMinutes, breakMinutes) || other.breakMinutes == breakMinutes)&&(identical(other.isModified, isModified) || other.isModified == isModified)&&(identical(other.isAutoClockedIn, isAutoClockedIn) || other.isAutoClockedIn == isAutoClockedIn)&&(identical(other.originalClockIn, originalClockIn) || other.originalClockIn == originalClockIn)&&(identical(other.originalClockOut, originalClockOut) || other.originalClockOut == originalClockOut)&&(identical(other.location, location) || other.location == location)&&(identical(other.note, note) || other.note == note)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,workplaceId,date,clockIn,clockOut,breakMinutes,isModified,originalClockIn,originalClockOut,location,note,createdAt);
+int get hashCode => Object.hash(runtimeType,id,workplaceId,date,clockIn,clockOut,breakMinutes,isModified,isAutoClockedIn,originalClockIn,originalClockOut,location,note,createdAt);
 
 @override
 String toString() {
-  return 'TimeEntry(id: $id, workplaceId: $workplaceId, date: $date, clockIn: $clockIn, clockOut: $clockOut, breakMinutes: $breakMinutes, isModified: $isModified, originalClockIn: $originalClockIn, originalClockOut: $originalClockOut, location: $location, note: $note, createdAt: $createdAt)';
+  return 'TimeEntry(id: $id, workplaceId: $workplaceId, date: $date, clockIn: $clockIn, clockOut: $clockOut, breakMinutes: $breakMinutes, isModified: $isModified, isAutoClockedIn: $isAutoClockedIn, originalClockIn: $originalClockIn, originalClockOut: $originalClockOut, location: $location, note: $note, createdAt: $createdAt)';
 }
 
 
@@ -273,7 +279,7 @@ abstract mixin class _$TimeEntryCopyWith<$Res> implements $TimeEntryCopyWith<$Re
   factory _$TimeEntryCopyWith(_TimeEntry value, $Res Function(_TimeEntry) _then) = __$TimeEntryCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String workplaceId, String date,@TimestampConverter() DateTime clockIn,@NullableTimestampConverter() DateTime? clockOut, int breakMinutes, bool isModified,@NullableTimestampConverter() DateTime? originalClockIn,@NullableTimestampConverter() DateTime? originalClockOut,@GeoPointConverter() GeoPoint? location, String? note,@TimestampConverter() DateTime createdAt
+ String id, String workplaceId, String date,@TimestampConverter() DateTime clockIn,@NullableTimestampConverter() DateTime? clockOut, int breakMinutes, bool isModified, bool isAutoClockedIn,@NullableTimestampConverter() DateTime? originalClockIn,@NullableTimestampConverter() DateTime? originalClockOut,@GeoPointConverter() GeoPoint? location, String? note,@TimestampConverter() DateTime createdAt
 });
 
 
@@ -290,7 +296,7 @@ class __$TimeEntryCopyWithImpl<$Res>
 
 /// Create a copy of TimeEntry
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? workplaceId = null,Object? date = null,Object? clockIn = null,Object? clockOut = freezed,Object? breakMinutes = null,Object? isModified = null,Object? originalClockIn = freezed,Object? originalClockOut = freezed,Object? location = freezed,Object? note = freezed,Object? createdAt = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? workplaceId = null,Object? date = null,Object? clockIn = null,Object? clockOut = freezed,Object? breakMinutes = null,Object? isModified = null,Object? isAutoClockedIn = null,Object? originalClockIn = freezed,Object? originalClockOut = freezed,Object? location = freezed,Object? note = freezed,Object? createdAt = null,}) {
   return _then(_TimeEntry(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,workplaceId: null == workplaceId ? _self.workplaceId : workplaceId // ignore: cast_nullable_to_non_nullable
@@ -299,6 +305,7 @@ as String,clockIn: null == clockIn ? _self.clockIn : clockIn // ignore: cast_nul
 as DateTime,clockOut: freezed == clockOut ? _self.clockOut : clockOut // ignore: cast_nullable_to_non_nullable
 as DateTime?,breakMinutes: null == breakMinutes ? _self.breakMinutes : breakMinutes // ignore: cast_nullable_to_non_nullable
 as int,isModified: null == isModified ? _self.isModified : isModified // ignore: cast_nullable_to_non_nullable
+as bool,isAutoClockedIn: null == isAutoClockedIn ? _self.isAutoClockedIn : isAutoClockedIn // ignore: cast_nullable_to_non_nullable
 as bool,originalClockIn: freezed == originalClockIn ? _self.originalClockIn : originalClockIn // ignore: cast_nullable_to_non_nullable
 as DateTime?,originalClockOut: freezed == originalClockOut ? _self.originalClockOut : originalClockOut // ignore: cast_nullable_to_non_nullable
 as DateTime?,location: freezed == location ? _self.location : location // ignore: cast_nullable_to_non_nullable

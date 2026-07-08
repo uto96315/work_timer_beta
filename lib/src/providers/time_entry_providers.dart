@@ -16,6 +16,23 @@ Stream<TimeEntry?> activeTimeEntry(Ref ref) {
   return ref.watch(timeEntryRepositoryProvider).watchOpenEntry(uid, workplace.id);
 }
 
+@riverpod
+Stream<List<TimeEntry>> entriesForDate(Ref ref, DateTime date) {
+  final uid = ref.watch(currentUidProvider);
+  final workplace = ref.watch(primaryWorkplaceProvider).value;
+  if (uid == null || workplace == null) return const Stream.empty();
+  return ref.watch(timeEntryRepositoryProvider).watchEntriesForDate(uid, workplace.id, date);
+}
+
+/// [end] is exclusive.
+@riverpod
+Stream<List<TimeEntry>> entriesInRange(Ref ref, DateTime start, DateTime end) {
+  final uid = ref.watch(currentUidProvider);
+  final workplace = ref.watch(primaryWorkplaceProvider).value;
+  if (uid == null || workplace == null) return const Stream.empty();
+  return ref.watch(timeEntryRepositoryProvider).watchEntriesForRange(uid, workplace.id, start, end);
+}
+
 /// Ticks once a second so the live earnings counter can redraw. Kept
 /// separate from [activeTimeEntryProvider] so the Firestore stream doesn't
 /// need to re-fire every second.

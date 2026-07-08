@@ -31,16 +31,23 @@ class TimeEntryRepository {
         .map((s) => s.docs.isEmpty ? null : TimeEntryFirestore.fromDoc(s.docs.first));
   }
 
-  Stream<List<TimeEntry>> watchEntriesForMonth(
+  Stream<List<TimeEntry>> watchEntriesForDate(String uid, String workplaceId, DateTime date) {
+    return _collection(uid, workplaceId)
+        .where('date', isEqualTo: _dateFormat.format(date))
+        .snapshots()
+        .map((s) => s.docs.map(TimeEntryFirestore.fromDoc).toList());
+  }
+
+  /// [end] is exclusive.
+  Stream<List<TimeEntry>> watchEntriesForRange(
     String uid,
     String workplaceId,
-    DateTime month,
+    DateTime start,
+    DateTime end,
   ) {
-    final start = _dateFormat.format(DateTime(month.year, month.month, 1));
-    final end = _dateFormat.format(DateTime(month.year, month.month + 1, 1));
     return _collection(uid, workplaceId)
-        .where('date', isGreaterThanOrEqualTo: start)
-        .where('date', isLessThan: end)
+        .where('date', isGreaterThanOrEqualTo: _dateFormat.format(start))
+        .where('date', isLessThan: _dateFormat.format(end))
         .orderBy('date')
         .snapshots()
         .map((s) => s.docs.map(TimeEntryFirestore.fromDoc).toList());
@@ -48,13 +55,30 @@ class TimeEntryRepository {
 
   Future<TimeEntry> clockIn(String uid, String workplaceId) async {
     final now = DateTime.now();
+    return _createClockIn(uid, workplaceId, clockInTime: now, isAuto: false);
+  }
+
+  /// Creates a clock-in entry backdated to the workplace's scheduled start
+  /// time, used when the user opens the app after their shift should have
+  /// already started. Flagged so the UI can prompt them to double-check it.
+  Future<TimeEntry> autoClockIn(String uid, String workplaceId, DateTime scheduledStart) async {
+    return _createClockIn(uid, workplaceId, clockInTime: scheduledStart, isAuto: true);
+  }
+
+  Future<TimeEntry> _createClockIn(
+    String uid,
+    String workplaceId, {
+    required DateTime clockInTime,
+    required bool isAuto,
+  }) async {
     final doc = _collection(uid, workplaceId).doc();
     final entry = TimeEntry(
       id: doc.id,
       workplaceId: workplaceId,
-      date: _dateFormat.format(now),
-      clockIn: now,
-      createdAt: now,
+      date: _dateFormat.format(clockInTime),
+      clockIn: clockInTime,
+      isAutoClockedIn: isAuto,
+      createdAt: DateTime.now(),
     );
     await doc.set(entry.toFirestore());
     return entry;

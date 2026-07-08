@@ -8,11 +8,12 @@ part of 'workplace.dart';
 
 _Workplace _$WorkplaceFromJson(Map<String, dynamic> json) => _Workplace(
   id: json['id'] as String,
-  name: json['name'] as String,
+  name: json['name'] as String?,
   hourlyWage: (json['hourlyWage'] as num).toInt(),
   startTime: json['startTime'] as String,
   endTime: json['endTime'] as String,
   breakMinutes: (json['breakMinutes'] as num).toInt(),
+  breakStartTime: json['breakStartTime'] as String? ?? '12:00',
   overtimeRatePercent: (json['overtimeRatePercent'] as num?)?.toInt() ?? 25,
   holidayWeekdays:
       (json['holidayWeekdays'] as List<dynamic>?)
@@ -32,6 +33,7 @@ Map<String, dynamic> _$WorkplaceToJson(
   'startTime': instance.startTime,
   'endTime': instance.endTime,
   'breakMinutes': instance.breakMinutes,
+  'breakStartTime': instance.breakStartTime,
   'overtimeRatePercent': instance.overtimeRatePercent,
   'holidayWeekdays': instance.holidayWeekdays,
   'createdAt': const TimestampConverter().toJson(instance.createdAt),

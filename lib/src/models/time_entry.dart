@@ -18,6 +18,9 @@ abstract class TimeEntry with _$TimeEntry {
     @NullableTimestampConverter() DateTime? clockOut,
     @Default(0) int breakMinutes,
     @Default(false) bool isModified,
+    /// True when clockIn was created automatically at the scheduled start
+    /// time rather than by the user tapping a button.
+    @Default(false) bool isAutoClockedIn,
     @NullableTimestampConverter() DateTime? originalClockIn,
     @NullableTimestampConverter() DateTime? originalClockOut,
     /// Reserved for the paid GPS proof-of-attendance feature; unused in MVP.

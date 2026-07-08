@@ -3,8 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../models/time_entry.dart';
-import '../../providers/auth_providers.dart';
-import '../../providers/firebase_providers.dart';
+import '../../providers/time_entry_providers.dart';
 import '../../providers/workplace_providers.dart';
 
 final _timeFormat = DateFormat('HH:mm');
@@ -14,7 +13,6 @@ class RecordsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final uid = ref.watch(currentUidProvider);
     final workplaceAsync = ref.watch(primaryWorkplaceProvider);
 
     return Scaffold(
@@ -23,11 +21,12 @@ class RecordsScreen extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('エラー: $e')),
         data: (workplace) {
-          if (workplace == null || uid == null) {
+          if (workplace == null) {
             return const Center(child: Text('勤務先が未設定です'));
           }
+          final now = DateTime.now();
           final entries = ref.watch(
-            _monthEntriesProvider((uid: uid, workplaceId: workplace.id, month: DateTime.now())),
+            entriesInRangeProvider(DateTime(now.year, now.month, 1), DateTime(now.year, now.month + 1, 1)),
           );
           return entries.when(
             loading: () => const Center(child: CircularProgressIndicator()),
@@ -48,13 +47,6 @@ class RecordsScreen extends ConsumerWidget {
     );
   }
 }
-
-final _monthEntriesProvider = StreamProvider.family<List<TimeEntry>,
-    ({String uid, String workplaceId, DateTime month})>((ref, args) {
-  return ref
-      .watch(timeEntryRepositoryProvider)
-      .watchEntriesForMonth(args.uid, args.workplaceId, args.month);
-});
 
 class _EntryTile extends StatelessWidget {
   const _EntryTile({required this.entry});

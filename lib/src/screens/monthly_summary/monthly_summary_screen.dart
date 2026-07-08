@@ -4,8 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../models/time_entry.dart';
 import '../../models/workplace.dart';
-import '../../providers/auth_providers.dart';
-import '../../providers/firebase_providers.dart';
+import '../../providers/time_entry_providers.dart';
 import '../../providers/workplace_providers.dart';
 import '../../util/earnings_calculator.dart';
 
@@ -16,7 +15,6 @@ class MonthlySummaryScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final uid = ref.watch(currentUidProvider);
     final workplaceAsync = ref.watch(primaryWorkplaceProvider);
 
     return Scaffold(
@@ -25,11 +23,12 @@ class MonthlySummaryScreen extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('エラー: $e')),
         data: (workplace) {
-          if (workplace == null || uid == null) {
+          if (workplace == null) {
             return const Center(child: Text('勤務先が未設定です'));
           }
+          final now = DateTime.now();
           final entries = ref.watch(
-            _monthEntriesProvider((uid: uid, workplaceId: workplace.id, month: DateTime.now())),
+            entriesInRangeProvider(DateTime(now.year, now.month, 1), DateTime(now.year, now.month + 1, 1)),
           );
           return entries.when(
             loading: () => const Center(child: CircularProgressIndicator()),
@@ -42,13 +41,6 @@ class MonthlySummaryScreen extends ConsumerWidget {
   }
 }
 
-final _monthEntriesProvider = StreamProvider.family<List<TimeEntry>,
-    ({String uid, String workplaceId, DateTime month})>((ref, args) {
-  return ref
-      .watch(timeEntryRepositoryProvider)
-      .watchEntriesForMonth(args.uid, args.workplaceId, args.month);
-});
-
 class _Summary extends StatelessWidget {
   const _Summary({required this.workplace, required this.entries});
 
@@ -57,30 +49,26 @@ class _Summary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
     final closed = entries.where((e) => e.clockOut != null).toList();
     final totalSeconds = closed.fold<int>(
       0,
       (sum, e) => sum + e.clockOut!.difference(e.clockIn).inSeconds - e.breakMinutes * 60,
     );
-    final totalYen = closed.fold<double>(
-      0,
-      (sum, e) => sum +
-          calculateLiveEarnings(
-            workplace: workplace,
-            clockIn: e.clockIn,
-            breakMinutes: e.breakMinutes,
-            now: e.clockOut!,
-          ).totalYen,
-    );
+    final totals = sumEarnings(workplace: workplace, entries: closed, now: now);
     final hours = totalSeconds ~/ 3600;
     final minutes = (totalSeconds % 3600) ~/ 60;
+    final overtimeHours = totals.overtimeSeconds ~/ 3600;
+    final overtimeMinutes = (totals.overtimeSeconds % 3600) ~/ 60;
 
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
         _SummaryCard(label: '今月の実働時間', value: '$hours時間$minutes分'),
         const SizedBox(height: 12),
-        _SummaryCard(label: '今月の本来の稼ぎ', value: _yenFormat.format(totalYen)),
+        _SummaryCard(label: '今月の本来の稼ぎ', value: _yenFormat.format(totals.totalYen)),
+        const SizedBox(height: 12),
+        _SummaryCard(label: '今月の残業時間', value: '$overtimeHours時間$overtimeMinutes分'),
         const SizedBox(height: 12),
         _SummaryCard(label: '記録日数', value: '${closed.length}日'),
       ],

@@ -15,7 +15,7 @@ part 'workplace.g.dart';
 abstract class Workplace with _$Workplace {
   const factory Workplace({
     required String id,
-    required String name,
+    String? name,
     /// Base hourly wage in yen.
     required int hourlyWage,
     /// Scheduled start time, "HH:mm" (24h, local time).
@@ -23,6 +23,9 @@ abstract class Workplace with _$Workplace {
     /// Scheduled end time ("teiji"), "HH:mm" (24h, local time).
     required String endTime,
     required int breakMinutes,
+    /// Break start time, "HH:mm" (24h, local time). Used to render the
+    /// day's schedule as blocks; defaults to a typical noon lunch break.
+    @Default('12:00') String breakStartTime,
     /// Overtime premium, e.g. 25 means 1.25x hourly wage.
     @Default(25) int overtimeRatePercent,
     /// ISO weekday numbers (1=Mon .. 7=Sun) treated as days off.

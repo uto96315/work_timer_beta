@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'providers/auth_providers.dart';
+import 'providers/workplace_providers.dart';
 import 'screens/home/home_screen.dart';
 import 'screens/monthly_summary/monthly_summary_screen.dart';
+import 'screens/onboarding/splash_screen.dart';
+import 'screens/onboarding/welcome_screen.dart';
 import 'screens/records/records_screen.dart';
 import 'screens/settings/settings_screen.dart';
 
@@ -13,7 +18,30 @@ class WorkTimerApp extends StatelessWidget {
     return MaterialApp(
       title: '仕事タイマー',
       theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal)),
-      home: const _RootScaffold(),
+      home: const _RootRouter(),
+    );
+  }
+}
+
+/// Decides between the splash screen, the onboarding flow, and the main app
+/// shell based on auth/workplace state. Once a workplace exists in
+/// Firestore, this rebuilds and swaps straight to [_RootScaffold] regardless
+/// of how deep the onboarding flow's own navigation stack is.
+class _RootRouter extends ConsumerWidget {
+  const _RootRouter();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final uid = ref.watch(currentUidProvider);
+    if (uid == null) {
+      return const SplashScreen();
+    }
+
+    final workplaceAsync = ref.watch(primaryWorkplaceProvider);
+    return workplaceAsync.when(
+      loading: () => const SplashScreen(),
+      error: (e, _) => Scaffold(body: Center(child: Text('エラー: $e'))),
+      data: (workplace) => workplace == null ? const WelcomeScreen() : const _RootScaffold(),
     );
   }
 }
