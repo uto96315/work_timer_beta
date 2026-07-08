@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:home_widget/home_widget.dart';
 
 import '../models/time_entry.dart';
@@ -38,7 +40,11 @@ class WidgetSyncService {
       await HomeWidget.saveWidgetData<bool>('hasWorkplace', true);
       await HomeWidget.saveWidgetData<int>('hourlyWage', workplace.hourlyWage);
       await HomeWidget.saveWidgetData<int>('overtimeRatePercent', workplace.overtimeRatePercent);
-      await HomeWidget.saveWidgetData<int>('breakMinutes', workplace.breakMinutes);
+      // The per-entry value, not the workplace default — matches what
+      // earnings_calculator.dart actually subtracts (it was set to the
+      // workplace's default break at clock-in time, but can be corrected
+      // per-day independently of it).
+      await HomeWidget.saveWidgetData<int>('breakMinutes', entry?.breakMinutes ?? workplace.breakMinutes);
       await HomeWidget.saveWidgetData<double>('scheduledStartEpoch', _epochSeconds(scheduledStart));
       await HomeWidget.saveWidgetData<double>('scheduledEndEpoch', _epochSeconds(scheduledEnd));
       final clockOut = entry?.clockOut;
@@ -50,6 +56,18 @@ class WidgetSyncService {
         'clockOutEpoch',
         clockOut == null ? null : _epochSeconds(clockOut),
       );
+      // Ad-hoc breaks started/stopped during the shift — earnings_calculator
+      // deducts these on top of breakMinutes, so the widget needs them too
+      // or it overstates earnings whenever one is taken (or ongoing).
+      final extraBreaksJson = jsonEncode(
+        (entry?.extraBreaks ?? const []).map((b) {
+          return {
+            'start': _epochSeconds(b.start),
+            'end': b.end == null ? null : _epochSeconds(b.end!),
+          };
+        }).toList(),
+      );
+      await HomeWidget.saveWidgetData<String>('extraBreaksJson', extraBreaksJson);
     }
     await HomeWidget.updateWidget(iOSName: iOSWidgetName);
   }
