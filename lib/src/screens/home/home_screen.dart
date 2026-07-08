@@ -72,6 +72,91 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     await ref
         .read(timeEntryRepositoryProvider)
         .correct(uid, workplace.id, entry, newClockIn: newClockIn);
+
+    // Only ask about the end time when the start actually moved — otherwise
+    // this fires on every no-op confirmation of the same time.
+    if (newClockIn.hour == entry.clockIn.hour &&
+        newClockIn.minute == entry.clockIn.minute) {
+      return;
+    }
+    if (!mounted) return;
+    final shouldShiftEnd = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('退勤予定の確認'),
+        content: const Text('出勤時間を変更しました。退勤予定時間も変更しますか？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('そのまま'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('変更する'),
+          ),
+        ],
+      ),
+    );
+    if (shouldShiftEnd != true) return;
+    if (!mounted) return;
+
+    final defaultEnd = _timeToday(newClockIn, workplace.endTime);
+    final currentEnd = entry.scheduledEndOverride ?? defaultEnd;
+    final currentEndTime = TimeOfDay(
+      hour: currentEnd.hour,
+      minute: currentEnd.minute,
+    );
+    final pickedEnd = await showCupertinoTimePicker(context, currentEndTime);
+    if (pickedEnd == null) return;
+    final newEnd = DateTime(
+      newClockIn.year,
+      newClockIn.month,
+      newClockIn.day,
+      pickedEnd.hour,
+      pickedEnd.minute,
+    );
+    final isDefaultEnd =
+        pickedEnd.hour == defaultEnd.hour && pickedEnd.minute == defaultEnd.minute;
+    await ref
+        .read(timeEntryRepositoryProvider)
+        .setScheduledEnd(
+          uid,
+          workplace.id,
+          entry.id,
+          isDefaultEnd ? null : newEnd,
+        );
+  }
+
+  Future<void> _editBreakStart(
+    TimeEntry entry,
+    Workplace workplace,
+    DateTime day,
+  ) async {
+    final defaultBreakStart = _timeToday(day, workplace.breakStartTime);
+    final current = entry.breakStartOverride ?? defaultBreakStart;
+    final currentTime = TimeOfDay(hour: current.hour, minute: current.minute);
+    final picked = await showCupertinoTimePicker(context, currentTime);
+    if (picked == null) return;
+    final uid = ref.read(currentUidProvider);
+    if (uid == null) return;
+    final newBreakStart = DateTime(
+      day.year,
+      day.month,
+      day.day,
+      picked.hour,
+      picked.minute,
+    );
+    final isDefault =
+        newBreakStart.hour == defaultBreakStart.hour &&
+        newBreakStart.minute == defaultBreakStart.minute;
+    await ref
+        .read(timeEntryRepositoryProvider)
+        .setBreakStart(
+          uid,
+          workplace.id,
+          entry.id,
+          isDefault ? null : newBreakStart,
+        );
   }
 
   Future<void> _clockOut(String workplaceId, String entryId) async {
@@ -108,6 +193,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               workplace: workplace,
               onAutoClockInCheck: _maybeAutoClockIn,
               onEditClockIn: _editClockIn,
+              onEditBreakStart: _editBreakStart,
               onClockOut: _clockOut,
               onUndoClockOut: _undoClockOut,
             );
@@ -123,6 +209,7 @@ class _HomeContent extends ConsumerWidget {
     required this.workplace,
     required this.onAutoClockInCheck,
     required this.onEditClockIn,
+    required this.onEditBreakStart,
     required this.onClockOut,
     required this.onUndoClockOut,
   });
@@ -130,6 +217,7 @@ class _HomeContent extends ConsumerWidget {
   final Workplace workplace;
   final void Function(Workplace, List<TimeEntry>) onAutoClockInCheck;
   final Future<void> Function(TimeEntry, Workplace) onEditClockIn;
+  final Future<void> Function(TimeEntry, Workplace, DateTime) onEditBreakStart;
   final Future<void> Function(String, String) onClockOut;
   final Future<void> Function(String, String) onUndoClockOut;
 
@@ -151,6 +239,9 @@ class _HomeContent extends ConsumerWidget {
         final activeEntry = todayEntries
             .where((e) => e.clockOut == null)
             .firstOrNull;
+        // Matches buildDaySchedule's single-shift-per-day assumption: the
+        // entry a break-start override attaches to.
+        final todayEntry = todayEntries.firstOrNull;
         TimeEntry? lastFinishedEntry;
         for (final e in todayEntries) {
           if (e.clockOut == null) continue;
@@ -194,14 +285,29 @@ class _HomeContent extends ConsumerWidget {
           now: now,
         );
 
-        final scheduledEnd = _timeToday(today, workplace.endTime);
+        final scheduledEnd =
+            todayEntry?.scheduledEndOverride ?? _timeToday(today, workplace.endTime);
         final untilEnd = scheduledEnd.difference(now);
+
+        final monthOvertimeHours = monthTotals.overtimeSeconds / 3600;
+        // 過労死ラインの目安（複数月平均80時間）と、36協定の一般的な上限
+        // （月45時間）を基準に色分けし、負担が増えていることに気づけるようにする。
+        final Color? overtimeAccentColor = monthOvertimeHours >= 80
+            ? Colors.red.shade600
+            : monthOvertimeHours >= 45
+            ? Colors.orange.shade800
+            : null;
+        final overtimeCaption = monthOvertimeHours >= 80
+            ? '過労死ラインの目安を超えています'
+            : monthOvertimeHours >= 45
+            ? '36協定の上限目安（月45時間）に近づいています'
+            : null;
 
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
           children: [
             _Greeting(workplaceName: workplace.name ?? '仕事タイマー'),
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
             _EarningsHeroCard(
               totalYen: todayTotals.totalYen,
               isOvertime: todayTotals.overtimeSeconds > 0,
@@ -221,20 +327,14 @@ class _HomeContent extends ConsumerWidget {
                   ? null
                   : () => onUndoClockOut(workplace.id, lastFinishedEntry!.id),
             ),
-            const SizedBox(height: 14),
-            // Row(
-            //   children: [
-            //     Icon(Icons.calendar_today_rounded, size: 18, color: Theme.of(context).colorScheme.primary),
-            //     const SizedBox(width: 8),
-            //     Text(
-            //       '今日のスケジュール',
-            //       style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-            //     ),
-            //   ],
-            // ),
-            const SizedBox(height: 12),
-            _DayTimeline(blocks: blocks),
-            const SizedBox(height: 28),
+            const SizedBox(height: 10),
+            _DayTimeline(
+              blocks: blocks,
+              onEditBreakStart: todayEntry == null
+                  ? null
+                  : () => onEditBreakStart(todayEntry, workplace, today),
+            ),
+            const SizedBox(height: 16),
             Row(
               children: [
                 Expanded(
@@ -259,7 +359,11 @@ class _HomeContent extends ConsumerWidget {
               label: '今月の残業',
               value:
                   '${monthTotals.overtimeSeconds ~/ 3600}時間${(monthTotals.overtimeSeconds % 3600) ~/ 60}分',
-              icon: Icons.timelapse_rounded,
+              icon: monthOvertimeHours >= 80
+                  ? Icons.warning_rounded
+                  : Icons.timelapse_rounded,
+              accentColor: overtimeAccentColor,
+              caption: overtimeCaption,
             ),
           ],
         );
@@ -331,13 +435,6 @@ class _EarningsHeroCard extends StatelessWidget {
   final VoidCallback? onClockOut;
   final VoidCallback? onUndoClockOut;
 
-  String _formatDuration(Duration d) {
-    final h = d.inHours;
-    final m = d.inMinutes % 60;
-    if (h <= 0) return '$m分';
-    return '$h時間$m分';
-  }
-
   Future<void> _handleClockOutPressed(BuildContext context) async {
     final overtime = untilEnd.isNegative;
     if (!overtime) {
@@ -365,19 +462,19 @@ class _EarningsHeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final overtime = untilEnd.isNegative;
+    // While working, the remaining/overtime duration is already shown by the
+    // day timeline's progress header, so this label only covers the states
+    // that timeline doesn't: before clock-in and after clock-out.
     final statusLabel = !isWorking && hasFinishedToday
         ? 'お疲れ様でした。'
         : !isWorking
         ? '出勤予定：$scheduledStartLabel'
-        : overtime
-        ? '定時を${_formatDuration(-untilEnd)}過ぎています'
-        : '定時まであと${_formatDuration(untilEnd)}';
+        : null;
 
     final entry = activeEntry;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -386,61 +483,53 @@ class _EarningsHeroCard extends StatelessWidget {
               ? [const Color(0xFFFF8A5C), const Color(0xFFE85D3D)]
               : [const Color(0xFF19C3A6), const Color(0xFF0D8F84)],
         ),
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
             color:
                 (isOvertime ? const Color(0xFFE85D3D) : const Color(0xFF0D8F84))
-                    .withValues(alpha: 0.35),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+                    .withValues(alpha: 0.3),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              // Icon(
-              //   overtime ? Icons.local_fire_department_rounded : Icons.schedule_rounded,
-              //   color: Colors.white,
-              //   size: 18,
-              // ),
-              // const SizedBox(width: 6),
-              Text(
-                statusLabel,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
-                ),
+          if (statusLabel != null) ...[
+            Text(
+              statusLabel,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
               ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          const Text(
+            ),
+            const SizedBox(height: 8),
+          ],
+          Text(
             '今日稼いだお金',
             style: TextStyle(
               color: Colors.white,
-              fontSize: 14,
+              fontSize: 12,
               fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           Text(
             _yenFormat.format(totalYen),
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 44,
+              fontSize: 30,
               fontWeight: FontWeight.w800,
               height: 1.1,
             ),
           ),
           if (entry != null) ...[
-            const SizedBox(height: 20),
+            const SizedBox(height: 10),
             Container(height: 1, color: Colors.white.withValues(alpha: 0.2)),
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
             Row(
               children: [
                 // const Icon(Icons.login_rounded, size: 16, color: Colors.white),
@@ -487,9 +576,9 @@ class _EarningsHeroCard extends StatelessWidget {
               !isWorking &&
               hasFinishedToday &&
               onUndoClockOut != null) ...[
-            const SizedBox(height: 20),
+            const SizedBox(height: 10),
             Container(height: 1, color: Colors.white.withValues(alpha: 0.2)),
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
             Align(
               alignment: Alignment.centerRight,
               child: OutlinedButton(
@@ -510,32 +599,163 @@ class _EarningsHeroCard extends StatelessWidget {
 }
 
 class _DayTimeline extends StatelessWidget {
-  const _DayTimeline({required this.blocks});
+  const _DayTimeline({required this.blocks, this.onEditBreakStart});
 
   final List<ScheduleBlock> blocks;
+  final VoidCallback? onEditBreakStart;
 
   @override
   Widget build(BuildContext context) {
+    if (blocks.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    var totalSeconds = 0;
+    var elapsedSeconds = 0;
+    for (final block in blocks) {
+      final blockSeconds = block.end.difference(block.start).inSeconds;
+      totalSeconds += blockSeconds;
+      if (block.state == BlockState.done) {
+        elapsedSeconds += blockSeconds;
+      } else if (block.state == BlockState.inProgress) {
+        elapsedSeconds += (blockSeconds * block.progress).round();
+      }
+    }
+    final overallProgress = totalSeconds == 0
+        ? 0.0
+        : (elapsedSeconds / totalSeconds).clamp(0.0, 1.0);
+    final remaining = Duration(
+      seconds: (totalSeconds - elapsedSeconds).clamp(0, totalSeconds),
+    );
+    final hasBreak = blocks.any((b) => b.isBreak);
+
     return Card(
       margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
-        child: Column(
-          children: [
-            for (var i = 0; i < blocks.length; i++)
-              _BlockRow(block: blocks[i], isLast: i == blocks.length - 1),
-          ],
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          _TimelineProgressHeader(
+            progress: overallProgress,
+            remaining: remaining,
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+            child: Column(
+              children: [
+                for (var i = 0; i < blocks.length; i++)
+                  _BlockRow(
+                    block: blocks[i],
+                    isLast: i == blocks.length - 1,
+                    onEditBreakStart: blocks[i].isBreak
+                        ? onEditBreakStart
+                        : null,
+                  ),
+              ],
+            ),
+          ),
+          // Late clock-ins can push the default break time out of the
+          // timeline entirely (schedule_blocks only shows a break at or
+          // after the actual clock-in), so surface a way to add one back.
+          if (!hasBreak && onEditBreakStart != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 16, 10),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: onEditBreakStart,
+                  icon: const Icon(Icons.add_rounded, size: 18),
+                  label: const Text('休憩を追加'),
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TimelineProgressHeader extends StatelessWidget {
+  const _TimelineProgressHeader({
+    required this.progress,
+    required this.remaining,
+  });
+
+  final double progress;
+  final Duration remaining;
+
+  String get _remainingLabel {
+    if (progress >= 1) return '本日のスケジュール終了';
+    final h = remaining.inHours;
+    final m = remaining.inMinutes % 60;
+    if (h <= 0) return 'あと$m分';
+    return 'あと$h時間$m分';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final percent = (progress * 100).round();
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 12, 18, 12),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF19C3A6), Color(0xFF0D8F84)],
         ),
+      ),
+      child: Row(
+        children: [
+          Text(
+            '$percent%',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+              height: 1,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(99),
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 8,
+                backgroundColor: Colors.white.withValues(alpha: 0.25),
+                valueColor: const AlwaysStoppedAnimation(Colors.white),
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Text(
+            _remainingLabel,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
 class _BlockRow extends StatelessWidget {
-  const _BlockRow({required this.block, required this.isLast});
+  const _BlockRow({
+    required this.block,
+    required this.isLast,
+    this.onEditBreakStart,
+  });
 
   final ScheduleBlock block;
   final bool isLast;
+  final VoidCallback? onEditBreakStart;
 
   @override
   Widget build(BuildContext context) {
@@ -544,7 +764,12 @@ class _BlockRow extends StatelessWidget {
         '${_timeFormat.format(block.start)} 〜 ${_timeFormat.format(block.end)}';
     final isDone = block.state == BlockState.done;
     final isInProgress = block.state == BlockState.inProgress;
-    final lineColor = isDone ? scheme.primary : scheme.outlineVariant;
+    final accentColor = block.isBreak ? scheme.tertiary : scheme.primary;
+    final lineColor = isDone
+        ? accentColor.withValues(alpha: 0.5)
+        : scheme.outlineVariant;
+
+    const rowHeight = 22.0;
 
     return IntrinsicHeight(
       child: Padding(
@@ -556,18 +781,13 @@ class _BlockRow extends StatelessWidget {
               width: 20,
               child: Column(
                 children: [
-                  const SizedBox(height: 6),
-                  Container(
-                    width: 12,
-                    height: 12,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: isDone || isInProgress
-                          ? scheme.primary
-                          : Colors.white,
-                      border: Border.all(
-                        color: isInProgress ? scheme.primary : lineColor,
-                        width: 2,
+                  SizedBox(
+                    height: rowHeight,
+                    child: Center(
+                      child: _StateDot(
+                        isDone: isDone,
+                        isInProgress: isInProgress,
+                        color: accentColor,
                       ),
                     ),
                   ),
@@ -579,40 +799,46 @@ class _BlockRow extends StatelessWidget {
             const SizedBox(width: 12),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        label,
-                        style: TextStyle(
-                          color: block.state == BlockState.upcoming
-                              ? scheme.onSurfaceVariant
-                              : null,
-                          fontWeight: isInProgress ? FontWeight.bold : null,
-                        ),
-                      ),
-                    ),
-                    if (block.isBreak)
-                      Text(
-                        '休憩',
-                        style: TextStyle(
-                          color: scheme.tertiary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      )
-                    else if (isInProgress)
-                      SizedBox(
-                        width: 80,
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: LinearProgressIndicator(
-                            value: block.progress,
-                            minHeight: 8,
+                padding: const EdgeInsets.only(bottom: 14),
+                child: SizedBox(
+                  height: rowHeight,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          label,
+                          style: TextStyle(
+                            color: isDone
+                                ? scheme.onSurfaceVariant.withValues(alpha: 0.6)
+                                : block.state == BlockState.upcoming
+                                ? scheme.onSurfaceVariant
+                                : null,
+                            fontWeight: isInProgress ? FontWeight.bold : null,
                           ),
                         ),
                       ),
-                  ],
+                      if (block.isBreak) ...[
+                        _RowBadge(
+                          label: '休憩',
+                          color: isDone
+                              ? scheme.tertiary.withValues(alpha: 0.6)
+                              : scheme.tertiary,
+                        ),
+                        if (onEditBreakStart != null)
+                          IconButton(
+                            icon: Icon(
+                              Icons.edit_rounded,
+                              size: 16,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                            onPressed: onEditBreakStart,
+                            visualDensity: VisualDensity.compact,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                      ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -623,16 +849,160 @@ class _BlockRow extends StatelessWidget {
   }
 }
 
+class _RowBadge extends StatelessWidget {
+  const _RowBadge({required this.label, required this.color});
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(99),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.bold,
+          fontSize: 12,
+        ),
+      ),
+    );
+  }
+}
+
+/// A checkmark-slot dot that pulses outward while its block is in progress,
+/// reading as "this is happening live right now".
+class _StateDot extends StatefulWidget {
+  const _StateDot({
+    required this.isDone,
+    required this.isInProgress,
+    required this.color,
+  });
+
+  final bool isDone;
+  final bool isInProgress;
+  final Color color;
+
+  @override
+  State<_StateDot> createState() => _StateDotState();
+}
+
+class _StateDotState extends State<_StateDot> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 2),
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.isInProgress) _controller.repeat();
+  }
+
+  @override
+  void didUpdateWidget(covariant _StateDot oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isInProgress && !_controller.isAnimating) {
+      _controller.repeat();
+    } else if (!widget.isInProgress && _controller.isAnimating) {
+      _controller.stop();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.isDone) {
+      return Container(
+        width: 18,
+        height: 18,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: widget.color.withValues(alpha: 0.55),
+        ),
+        child: const Icon(Icons.check_rounded, size: 12, color: Colors.white),
+      );
+    }
+    if (!widget.isInProgress) {
+      return Container(
+        width: 18,
+        height: 18,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white,
+          border: Border.all(
+            color: Theme.of(context).colorScheme.outlineVariant,
+            width: 2,
+          ),
+        ),
+      );
+    }
+    return SizedBox(
+      width: 18,
+      height: 18,
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, _) {
+          final t = _controller.value;
+          return Stack(
+            alignment: Alignment.center,
+            children: [
+              Opacity(
+                opacity: (1 - t).clamp(0.0, 1.0),
+                child: Transform.scale(
+                  scale: 0.6 + t,
+                  child: Container(
+                    width: 18,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: widget.color, width: 2),
+                    ),
+                  ),
+                ),
+              ),
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(shape: BoxShape.circle, color: widget.color),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
 class _StatTile extends StatelessWidget {
-  const _StatTile({required this.label, required this.value, this.icon});
+  const _StatTile({
+    required this.label,
+    required this.value,
+    this.icon,
+    this.accentColor,
+    this.caption,
+  });
 
   final String label;
   final String value;
   final IconData? icon;
+  final Color? accentColor;
+  final String? caption;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final accent = accentColor ?? scheme.primary;
     return Card(
       margin: EdgeInsets.zero,
       child: Padding(
@@ -646,10 +1016,10 @@ class _StatTile extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: scheme.primaryContainer,
+                      color: accent.withValues(alpha: 0.14),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(icon, size: 15, color: scheme.primary),
+                    child: Icon(icon, size: 15, color: accent),
                   ),
                   const SizedBox(width: 8),
                 ],
@@ -659,10 +1029,22 @@ class _StatTile extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               value,
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: accentColor,
+              ),
             ),
+            if (caption != null) ...[
+              const SizedBox(height: 2),
+              Text(
+                caption!,
+                style: TextStyle(
+                  color: accent,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
           ],
         ),
       ),

@@ -52,5 +52,6 @@ EarningsResult? liveEarnings(Ref ref) {
     clockIn: entry.clockIn,
     breakMinutes: entry.breakMinutes,
     now: now,
+    scheduledEndOverride: entry.scheduledEndOverride,
   );
 }

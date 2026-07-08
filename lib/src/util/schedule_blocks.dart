@@ -26,18 +26,24 @@ DateTime _dayAt(DateTime day, String hhmm) {
   return DateTime(day.year, day.month, day.day, int.parse(parts[0]), int.parse(parts[1]));
 }
 
-/// Splits the workday into hour-sized blocks (shorter at the edges of the
-/// break), for rendering as a checklist-style daily timeline.
+/// Rounds up to the next clock-hour boundary (e.g. 8:40 -> 9:00), so blocks
+/// read as "8:40〜9:00〜10:00" instead of "8:40〜9:40〜10:40".
+DateTime _nextHourBoundary(DateTime t) {
+  if (t.minute == 0 && t.second == 0) return t.add(const Duration(hours: 1));
+  return DateTime(t.year, t.month, t.day, t.hour + 1);
+}
+
+/// Splits the workday into blocks aligned to clock-hour boundaries (shorter
+/// at the edges of the shift and the break), for rendering as a
+/// checklist-style daily timeline.
 List<ScheduleBlock> buildDaySchedule({
   required Workplace workplace,
   required DateTime day,
   required List<TimeEntry> entriesToday,
   required DateTime now,
 }) {
-  final start = _dayAt(day, workplace.startTime);
-  final end = _dayAt(day, workplace.endTime);
-  final breakStart = _dayAt(day, workplace.breakStartTime);
-  final breakEnd = breakStart.add(Duration(minutes: workplace.breakMinutes));
+  final scheduledStart = _dayAt(day, workplace.startTime);
+  final defaultEnd = _dayAt(day, workplace.endTime);
 
   // Assumes a single continuous shift per day (MVP), which is the common
   // case; a worked block only counts as "done" if it falls within
@@ -46,11 +52,35 @@ List<ScheduleBlock> buildDaySchedule({
   final clockIn = activeEntry?.clockIn;
   final workedEnd = activeEntry == null ? null : (activeEntry.clockOut ?? now);
 
+  // Editing the clock-in time can shift the whole shift later or earlier;
+  // let the user shift the expected end time to match instead of always
+  // anchoring to the workplace default.
+  final overrideEnd = activeEntry?.scheduledEndOverride;
+  final end = (overrideEnd != null && overrideEnd.isAfter(scheduledStart))
+      ? overrideEnd
+      : defaultEnd;
+
+  // The user can shift today's break start away from the workplace default;
+  // fall back to the default if the override no longer fits the shift.
+  final defaultBreakStart = _dayAt(day, workplace.breakStartTime);
+  final breakDuration = Duration(minutes: workplace.breakMinutes);
+  final overrideBreakStart = activeEntry?.breakStartOverride;
+  final breakStart =
+      overrideBreakStart != null &&
+          !overrideBreakStart.isBefore(scheduledStart) &&
+          !overrideBreakStart.add(breakDuration).isAfter(end)
+      ? overrideBreakStart
+      : defaultBreakStart;
+  final breakEnd = breakStart.add(breakDuration);
+
+  // The timeline only shows time actually worked (or, before clocking in,
+  // the default schedule preview) — time before an actual late clock-in
+  // simply isn't part of the timeline, rather than showing as "missed".
+  final start = clockIn ?? scheduledStart;
+
   BlockState workState(DateTime blockStart, DateTime blockEnd) {
-    if (clockIn == null || workedEnd == null || blockStart.isBefore(clockIn)) {
-      return BlockState.upcoming;
-    }
-    if (!blockEnd.isAfter(workedEnd)) return BlockState.done;
+    if (clockIn == null) return BlockState.upcoming;
+    if (!blockEnd.isAfter(workedEnd!)) return BlockState.done;
     if (blockStart.isBefore(workedEnd)) return BlockState.inProgress;
     return BlockState.upcoming;
   }
@@ -84,7 +114,7 @@ List<ScheduleBlock> buildDaySchedule({
       continue;
     }
 
-    var blockEnd = cursor.add(const Duration(hours: 1));
+    var blockEnd = _nextHourBoundary(cursor);
     if (breakStart.isAfter(cursor) && breakStart.isBefore(blockEnd)) {
       blockEnd = breakStart;
     }

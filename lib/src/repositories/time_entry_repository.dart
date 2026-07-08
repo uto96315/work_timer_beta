@@ -119,4 +119,34 @@ class TimeEntryRepository {
     };
     await _collection(uid, workplaceId).doc(entry.id).update(update);
   }
+
+  /// Shifts today's break start time, without touching the workplace's
+  /// default. Pass `null` to revert to the workplace default.
+  Future<void> setBreakStart(
+    String uid,
+    String workplaceId,
+    String entryId,
+    DateTime? breakStart,
+  ) async {
+    await _collection(uid, workplaceId).doc(entryId).update({
+      'breakStartOverride': breakStart == null
+          ? FieldValue.delete()
+          : Timestamp.fromDate(breakStart),
+    });
+  }
+
+  /// Shifts today's scheduled end time, without touching the workplace's
+  /// default. Pass `null` to revert to the workplace default.
+  Future<void> setScheduledEnd(
+    String uid,
+    String workplaceId,
+    String entryId,
+    DateTime? scheduledEnd,
+  ) async {
+    await _collection(uid, workplaceId).doc(entryId).update({
+      'scheduledEndOverride': scheduledEnd == null
+          ? FieldValue.delete()
+          : Timestamp.fromDate(scheduledEnd),
+    });
+  }
 }

@@ -37,8 +37,9 @@ EarningsResult calculateLiveEarnings({
   required DateTime clockIn,
   required int breakMinutes,
   required DateTime now,
+  DateTime? scheduledEndOverride,
 }) {
-  final scheduledEnd = _dayAt(clockIn, workplace.endTime);
+  final scheduledEnd = scheduledEndOverride ?? _dayAt(clockIn, workplace.endTime);
   final breakSeconds = breakMinutes * 60;
 
   final regularWindowEnd = now.isBefore(scheduledEnd) ? now : scheduledEnd;
@@ -74,6 +75,7 @@ EarningsResult calculateEntryEarnings({
     clockIn: entry.clockIn,
     breakMinutes: entry.breakMinutes,
     now: entry.clockOut ?? now,
+    scheduledEndOverride: entry.scheduledEndOverride,
   );
 }
 

@@ -13,6 +13,12 @@ _TimeEntry _$TimeEntryFromJson(Map<String, dynamic> json) => _TimeEntry(
   clockIn: const TimestampConverter().fromJson(json['clockIn']),
   clockOut: const NullableTimestampConverter().fromJson(json['clockOut']),
   breakMinutes: (json['breakMinutes'] as num?)?.toInt() ?? 0,
+  breakStartOverride: const NullableTimestampConverter().fromJson(
+    json['breakStartOverride'],
+  ),
+  scheduledEndOverride: const NullableTimestampConverter().fromJson(
+    json['scheduledEndOverride'],
+  ),
   isModified: json['isModified'] as bool? ?? false,
   isAutoClockedIn: json['isAutoClockedIn'] as bool? ?? false,
   originalClockIn: const NullableTimestampConverter().fromJson(
@@ -34,6 +40,12 @@ Map<String, dynamic> _$TimeEntryToJson(_TimeEntry instance) =>
       'clockIn': const TimestampConverter().toJson(instance.clockIn),
       'clockOut': const NullableTimestampConverter().toJson(instance.clockOut),
       'breakMinutes': instance.breakMinutes,
+      'breakStartOverride': const NullableTimestampConverter().toJson(
+        instance.breakStartOverride,
+      ),
+      'scheduledEndOverride': const NullableTimestampConverter().toJson(
+        instance.scheduledEndOverride,
+      ),
       'isModified': instance.isModified,
       'isAutoClockedIn': instance.isAutoClockedIn,
       'originalClockIn': const NullableTimestampConverter().toJson(

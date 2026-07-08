@@ -17,6 +17,11 @@ abstract class TimeEntry with _$TimeEntry {
     @TimestampConverter() required DateTime clockIn,
     @NullableTimestampConverter() DateTime? clockOut,
     @Default(0) int breakMinutes,
+    /// Overrides the workplace's default break start time for this day only.
+    @NullableTimestampConverter() DateTime? breakStartOverride,
+    /// Overrides the workplace's default scheduled end time for this day
+    /// only, e.g. when a late/early clock-in shifts the whole shift.
+    @NullableTimestampConverter() DateTime? scheduledEndOverride,
     @Default(false) bool isModified,
     /// True when clockIn was created automatically at the scheduled start
     /// time rather than by the user tapping a button.
