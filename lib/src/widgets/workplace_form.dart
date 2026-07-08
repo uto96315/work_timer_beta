@@ -50,6 +50,7 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
   late TimeOfDay _breakStartTime;
   Industry? _industry;
   EmploymentType? _employmentType;
+  int? _payday;
 
   bool get _isEditing => widget.workplace != null;
 
@@ -66,6 +67,7 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
     _breakStartTime = _parseTime(w?.breakStartTime) ?? const TimeOfDay(hour: 12, minute: 0);
     _industry = w?.industry;
     _employmentType = w?.employmentType;
+    _payday = w?.payday;
 
     _wageFocus = FocusNode()..addListener(() => _onFocusChange(_wageFocus));
     _breakFocus = FocusNode()..addListener(() => _onFocusChange(_breakFocus));
@@ -130,6 +132,7 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
           breakMinutes: int.parse(_breakController.text),
           breakStartTime: _formatTime(_breakStartTime),
           overtimeRatePercent: int.parse(_overtimeController.text),
+          payday: _payday,
           createdAt: DateTime.now(),
         ),
       );
@@ -145,6 +148,7 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
           breakMinutes: int.parse(_breakController.text),
           breakStartTime: _formatTime(_breakStartTime),
           overtimeRatePercent: int.parse(_overtimeController.text),
+          payday: _payday,
         ),
       );
     }
@@ -231,6 +235,14 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
             textInputAction: TextInputAction.done,
             validator: (v) => (v == null || int.tryParse(v) == null) ? '数値を入力してください' : null,
             helperText: '定時を過ぎたら時給が何%増えるか。目安は25%（法律上の最低ライン）',
+          ),
+          const SizedBox(height: 10),
+          SettingsPickerRow<int?>(
+            label: '給料日',
+            value: _payday,
+            options: [null, ...List.generate(31, (i) => i + 1)],
+            labelOf: (v) => v == null ? _unset : '$v日',
+            onChanged: (v) => _onPickerChanged(() => _payday = v),
           ),
           if (!_isEditing) ...[
             const SizedBox(height: 20),

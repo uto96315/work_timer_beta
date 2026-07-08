@@ -51,6 +51,9 @@ class NotificationService {
 
   int _id(int weekday, int slot) => weekday * 10 + slot;
 
+  /// Outside the 10-72 range used by [_id]'s weekday*10+slot scheme.
+  static const _paydayId = 900;
+
   DateTime _timeToday(DateTime day, String hhmm) {
     final parts = hhmm.split(':');
     return DateTime(
@@ -67,6 +70,19 @@ class NotificationService {
     final now = tz.TZDateTime.now(tz.local);
     while (scheduled.weekday != weekday || scheduled.isBefore(now)) {
       scheduled = scheduled.add(const Duration(days: 1));
+    }
+    return scheduled;
+  }
+
+  /// Next occurrence of [day] (1-31) at [time]'s hour/minute. Months shorter
+  /// than [day] simply roll over into the next month (e.g. day 31 in April
+  /// becomes May 1st), which is an acceptable approximation for a payday
+  /// reminder rather than more elaborate "last day of month" clamping.
+  tz.TZDateTime _nextInstanceOfDayOfMonth(DateTime time, int day) {
+    var scheduled = tz.TZDateTime(tz.local, time.year, time.month, day, time.hour, time.minute);
+    final now = tz.TZDateTime.now(tz.local);
+    while (scheduled.isBefore(now)) {
+      scheduled = tz.TZDateTime(tz.local, scheduled.year, scheduled.month + 1, day, time.hour, time.minute);
     }
     return scheduled;
   }
@@ -115,6 +131,21 @@ class NotificationService {
           matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
         );
       }
+    }
+
+    if (workplace.payday != null && profile.notifyPayday) {
+      // Fixed at 9:00 regardless of when the sync happens to run, so the
+      // reminder time doesn't drift with whenever the app was last opened.
+      final paydayTime = DateTime(now.year, now.month, now.day, 9, 0);
+      await _plugin.zonedSchedule(
+        id: _paydayId,
+        title: '本日は給料日です',
+        body: '給与明細を確認しましょう。',
+        scheduledDate: _nextInstanceOfDayOfMonth(paydayTime, workplace.payday!),
+        notificationDetails: details,
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        matchDateTimeComponents: DateTimeComponents.dayOfMonthAndTime,
+      );
     }
   }
 }

@@ -24,7 +24,9 @@ mixin _$Workplace {
 /// day's schedule as blocks; defaults to a typical noon lunch break.
  String get breakStartTime;/// Overtime premium, e.g. 25 means 1.25x hourly wage.
  int get overtimeRatePercent;/// ISO weekday numbers (1=Mon .. 7=Sun) treated as days off.
- List<int> get holidayWeekdays;@TimestampConverter() DateTime get createdAt;@NullableTimestampConverter() DateTime? get updatedAt;
+ List<int> get holidayWeekdays;/// Day of the month (1-31) salary is paid on, used to schedule a payday
+/// reminder notification. Null means not configured.
+ int? get payday;@TimestampConverter() DateTime get createdAt;@NullableTimestampConverter() DateTime? get updatedAt;
 /// Create a copy of Workplace
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -37,16 +39,16 @@ $WorkplaceCopyWith<Workplace> get copyWith => _$WorkplaceCopyWithImpl<Workplace>
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Workplace&&(identical(other.id, id) || other.id == id)&&(identical(other.industry, industry) || other.industry == industry)&&(identical(other.employmentType, employmentType) || other.employmentType == employmentType)&&(identical(other.hourlyWage, hourlyWage) || other.hourlyWage == hourlyWage)&&(identical(other.startTime, startTime) || other.startTime == startTime)&&(identical(other.endTime, endTime) || other.endTime == endTime)&&(identical(other.breakMinutes, breakMinutes) || other.breakMinutes == breakMinutes)&&(identical(other.breakStartTime, breakStartTime) || other.breakStartTime == breakStartTime)&&(identical(other.overtimeRatePercent, overtimeRatePercent) || other.overtimeRatePercent == overtimeRatePercent)&&const DeepCollectionEquality().equals(other.holidayWeekdays, holidayWeekdays)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Workplace&&(identical(other.id, id) || other.id == id)&&(identical(other.industry, industry) || other.industry == industry)&&(identical(other.employmentType, employmentType) || other.employmentType == employmentType)&&(identical(other.hourlyWage, hourlyWage) || other.hourlyWage == hourlyWage)&&(identical(other.startTime, startTime) || other.startTime == startTime)&&(identical(other.endTime, endTime) || other.endTime == endTime)&&(identical(other.breakMinutes, breakMinutes) || other.breakMinutes == breakMinutes)&&(identical(other.breakStartTime, breakStartTime) || other.breakStartTime == breakStartTime)&&(identical(other.overtimeRatePercent, overtimeRatePercent) || other.overtimeRatePercent == overtimeRatePercent)&&const DeepCollectionEquality().equals(other.holidayWeekdays, holidayWeekdays)&&(identical(other.payday, payday) || other.payday == payday)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,industry,employmentType,hourlyWage,startTime,endTime,breakMinutes,breakStartTime,overtimeRatePercent,const DeepCollectionEquality().hash(holidayWeekdays),createdAt,updatedAt);
+int get hashCode => Object.hash(runtimeType,id,industry,employmentType,hourlyWage,startTime,endTime,breakMinutes,breakStartTime,overtimeRatePercent,const DeepCollectionEquality().hash(holidayWeekdays),payday,createdAt,updatedAt);
 
 @override
 String toString() {
-  return 'Workplace(id: $id, industry: $industry, employmentType: $employmentType, hourlyWage: $hourlyWage, startTime: $startTime, endTime: $endTime, breakMinutes: $breakMinutes, breakStartTime: $breakStartTime, overtimeRatePercent: $overtimeRatePercent, holidayWeekdays: $holidayWeekdays, createdAt: $createdAt, updatedAt: $updatedAt)';
+  return 'Workplace(id: $id, industry: $industry, employmentType: $employmentType, hourlyWage: $hourlyWage, startTime: $startTime, endTime: $endTime, breakMinutes: $breakMinutes, breakStartTime: $breakStartTime, overtimeRatePercent: $overtimeRatePercent, holidayWeekdays: $holidayWeekdays, payday: $payday, createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 
@@ -57,7 +59,7 @@ abstract mixin class $WorkplaceCopyWith<$Res>  {
   factory $WorkplaceCopyWith(Workplace value, $Res Function(Workplace) _then) = _$WorkplaceCopyWithImpl;
 @useResult
 $Res call({
- String id, Industry? industry, EmploymentType? employmentType, int hourlyWage, String startTime, String endTime, int breakMinutes, String breakStartTime, int overtimeRatePercent, List<int> holidayWeekdays,@TimestampConverter() DateTime createdAt,@NullableTimestampConverter() DateTime? updatedAt
+ String id, Industry? industry, EmploymentType? employmentType, int hourlyWage, String startTime, String endTime, int breakMinutes, String breakStartTime, int overtimeRatePercent, List<int> holidayWeekdays, int? payday,@TimestampConverter() DateTime createdAt,@NullableTimestampConverter() DateTime? updatedAt
 });
 
 
@@ -74,7 +76,7 @@ class _$WorkplaceCopyWithImpl<$Res>
 
 /// Create a copy of Workplace
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? industry = freezed,Object? employmentType = freezed,Object? hourlyWage = null,Object? startTime = null,Object? endTime = null,Object? breakMinutes = null,Object? breakStartTime = null,Object? overtimeRatePercent = null,Object? holidayWeekdays = null,Object? createdAt = null,Object? updatedAt = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? industry = freezed,Object? employmentType = freezed,Object? hourlyWage = null,Object? startTime = null,Object? endTime = null,Object? breakMinutes = null,Object? breakStartTime = null,Object? overtimeRatePercent = null,Object? holidayWeekdays = null,Object? payday = freezed,Object? createdAt = null,Object? updatedAt = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,industry: freezed == industry ? _self.industry : industry // ignore: cast_nullable_to_non_nullable
@@ -86,7 +88,8 @@ as String,breakMinutes: null == breakMinutes ? _self.breakMinutes : breakMinutes
 as int,breakStartTime: null == breakStartTime ? _self.breakStartTime : breakStartTime // ignore: cast_nullable_to_non_nullable
 as String,overtimeRatePercent: null == overtimeRatePercent ? _self.overtimeRatePercent : overtimeRatePercent // ignore: cast_nullable_to_non_nullable
 as int,holidayWeekdays: null == holidayWeekdays ? _self.holidayWeekdays : holidayWeekdays // ignore: cast_nullable_to_non_nullable
-as List<int>,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
+as List<int>,payday: freezed == payday ? _self.payday : payday // ignore: cast_nullable_to_non_nullable
+as int?,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime,updatedAt: freezed == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,
   ));
@@ -173,10 +176,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  Industry? industry,  EmploymentType? employmentType,  int hourlyWage,  String startTime,  String endTime,  int breakMinutes,  String breakStartTime,  int overtimeRatePercent,  List<int> holidayWeekdays, @TimestampConverter()  DateTime createdAt, @NullableTimestampConverter()  DateTime? updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String id,  Industry? industry,  EmploymentType? employmentType,  int hourlyWage,  String startTime,  String endTime,  int breakMinutes,  String breakStartTime,  int overtimeRatePercent,  List<int> holidayWeekdays,  int? payday, @TimestampConverter()  DateTime createdAt, @NullableTimestampConverter()  DateTime? updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Workplace() when $default != null:
-return $default(_that.id,_that.industry,_that.employmentType,_that.hourlyWage,_that.startTime,_that.endTime,_that.breakMinutes,_that.breakStartTime,_that.overtimeRatePercent,_that.holidayWeekdays,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.industry,_that.employmentType,_that.hourlyWage,_that.startTime,_that.endTime,_that.breakMinutes,_that.breakStartTime,_that.overtimeRatePercent,_that.holidayWeekdays,_that.payday,_that.createdAt,_that.updatedAt);case _:
   return orElse();
 
 }
@@ -194,10 +197,10 @@ return $default(_that.id,_that.industry,_that.employmentType,_that.hourlyWage,_t
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  Industry? industry,  EmploymentType? employmentType,  int hourlyWage,  String startTime,  String endTime,  int breakMinutes,  String breakStartTime,  int overtimeRatePercent,  List<int> holidayWeekdays, @TimestampConverter()  DateTime createdAt, @NullableTimestampConverter()  DateTime? updatedAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String id,  Industry? industry,  EmploymentType? employmentType,  int hourlyWage,  String startTime,  String endTime,  int breakMinutes,  String breakStartTime,  int overtimeRatePercent,  List<int> holidayWeekdays,  int? payday, @TimestampConverter()  DateTime createdAt, @NullableTimestampConverter()  DateTime? updatedAt)  $default,) {final _that = this;
 switch (_that) {
 case _Workplace():
-return $default(_that.id,_that.industry,_that.employmentType,_that.hourlyWage,_that.startTime,_that.endTime,_that.breakMinutes,_that.breakStartTime,_that.overtimeRatePercent,_that.holidayWeekdays,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.industry,_that.employmentType,_that.hourlyWage,_that.startTime,_that.endTime,_that.breakMinutes,_that.breakStartTime,_that.overtimeRatePercent,_that.holidayWeekdays,_that.payday,_that.createdAt,_that.updatedAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -214,10 +217,10 @@ return $default(_that.id,_that.industry,_that.employmentType,_that.hourlyWage,_t
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  Industry? industry,  EmploymentType? employmentType,  int hourlyWage,  String startTime,  String endTime,  int breakMinutes,  String breakStartTime,  int overtimeRatePercent,  List<int> holidayWeekdays, @TimestampConverter()  DateTime createdAt, @NullableTimestampConverter()  DateTime? updatedAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String id,  Industry? industry,  EmploymentType? employmentType,  int hourlyWage,  String startTime,  String endTime,  int breakMinutes,  String breakStartTime,  int overtimeRatePercent,  List<int> holidayWeekdays,  int? payday, @TimestampConverter()  DateTime createdAt, @NullableTimestampConverter()  DateTime? updatedAt)?  $default,) {final _that = this;
 switch (_that) {
 case _Workplace() when $default != null:
-return $default(_that.id,_that.industry,_that.employmentType,_that.hourlyWage,_that.startTime,_that.endTime,_that.breakMinutes,_that.breakStartTime,_that.overtimeRatePercent,_that.holidayWeekdays,_that.createdAt,_that.updatedAt);case _:
+return $default(_that.id,_that.industry,_that.employmentType,_that.hourlyWage,_that.startTime,_that.endTime,_that.breakMinutes,_that.breakStartTime,_that.overtimeRatePercent,_that.holidayWeekdays,_that.payday,_that.createdAt,_that.updatedAt);case _:
   return null;
 
 }
@@ -229,7 +232,7 @@ return $default(_that.id,_that.industry,_that.employmentType,_that.hourlyWage,_t
 @JsonSerializable()
 
 class _Workplace implements Workplace {
-  const _Workplace({required this.id, this.industry, this.employmentType, required this.hourlyWage, required this.startTime, required this.endTime, required this.breakMinutes, this.breakStartTime = '12:00', this.overtimeRatePercent = 25, final  List<int> holidayWeekdays = const [], @TimestampConverter() required this.createdAt, @NullableTimestampConverter() this.updatedAt}): _holidayWeekdays = holidayWeekdays;
+  const _Workplace({required this.id, this.industry, this.employmentType, required this.hourlyWage, required this.startTime, required this.endTime, required this.breakMinutes, this.breakStartTime = '12:00', this.overtimeRatePercent = 25, final  List<int> holidayWeekdays = const [], this.payday, @TimestampConverter() required this.createdAt, @NullableTimestampConverter() this.updatedAt}): _holidayWeekdays = holidayWeekdays;
   factory _Workplace.fromJson(Map<String, dynamic> json) => _$WorkplaceFromJson(json);
 
 @override final  String id;
@@ -258,6 +261,9 @@ class _Workplace implements Workplace {
   return EqualUnmodifiableListView(_holidayWeekdays);
 }
 
+/// Day of the month (1-31) salary is paid on, used to schedule a payday
+/// reminder notification. Null means not configured.
+@override final  int? payday;
 @override@TimestampConverter() final  DateTime createdAt;
 @override@NullableTimestampConverter() final  DateTime? updatedAt;
 
@@ -274,16 +280,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Workplace&&(identical(other.id, id) || other.id == id)&&(identical(other.industry, industry) || other.industry == industry)&&(identical(other.employmentType, employmentType) || other.employmentType == employmentType)&&(identical(other.hourlyWage, hourlyWage) || other.hourlyWage == hourlyWage)&&(identical(other.startTime, startTime) || other.startTime == startTime)&&(identical(other.endTime, endTime) || other.endTime == endTime)&&(identical(other.breakMinutes, breakMinutes) || other.breakMinutes == breakMinutes)&&(identical(other.breakStartTime, breakStartTime) || other.breakStartTime == breakStartTime)&&(identical(other.overtimeRatePercent, overtimeRatePercent) || other.overtimeRatePercent == overtimeRatePercent)&&const DeepCollectionEquality().equals(other._holidayWeekdays, _holidayWeekdays)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Workplace&&(identical(other.id, id) || other.id == id)&&(identical(other.industry, industry) || other.industry == industry)&&(identical(other.employmentType, employmentType) || other.employmentType == employmentType)&&(identical(other.hourlyWage, hourlyWage) || other.hourlyWage == hourlyWage)&&(identical(other.startTime, startTime) || other.startTime == startTime)&&(identical(other.endTime, endTime) || other.endTime == endTime)&&(identical(other.breakMinutes, breakMinutes) || other.breakMinutes == breakMinutes)&&(identical(other.breakStartTime, breakStartTime) || other.breakStartTime == breakStartTime)&&(identical(other.overtimeRatePercent, overtimeRatePercent) || other.overtimeRatePercent == overtimeRatePercent)&&const DeepCollectionEquality().equals(other._holidayWeekdays, _holidayWeekdays)&&(identical(other.payday, payday) || other.payday == payday)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,industry,employmentType,hourlyWage,startTime,endTime,breakMinutes,breakStartTime,overtimeRatePercent,const DeepCollectionEquality().hash(_holidayWeekdays),createdAt,updatedAt);
+int get hashCode => Object.hash(runtimeType,id,industry,employmentType,hourlyWage,startTime,endTime,breakMinutes,breakStartTime,overtimeRatePercent,const DeepCollectionEquality().hash(_holidayWeekdays),payday,createdAt,updatedAt);
 
 @override
 String toString() {
-  return 'Workplace(id: $id, industry: $industry, employmentType: $employmentType, hourlyWage: $hourlyWage, startTime: $startTime, endTime: $endTime, breakMinutes: $breakMinutes, breakStartTime: $breakStartTime, overtimeRatePercent: $overtimeRatePercent, holidayWeekdays: $holidayWeekdays, createdAt: $createdAt, updatedAt: $updatedAt)';
+  return 'Workplace(id: $id, industry: $industry, employmentType: $employmentType, hourlyWage: $hourlyWage, startTime: $startTime, endTime: $endTime, breakMinutes: $breakMinutes, breakStartTime: $breakStartTime, overtimeRatePercent: $overtimeRatePercent, holidayWeekdays: $holidayWeekdays, payday: $payday, createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 
@@ -294,7 +300,7 @@ abstract mixin class _$WorkplaceCopyWith<$Res> implements $WorkplaceCopyWith<$Re
   factory _$WorkplaceCopyWith(_Workplace value, $Res Function(_Workplace) _then) = __$WorkplaceCopyWithImpl;
 @override @useResult
 $Res call({
- String id, Industry? industry, EmploymentType? employmentType, int hourlyWage, String startTime, String endTime, int breakMinutes, String breakStartTime, int overtimeRatePercent, List<int> holidayWeekdays,@TimestampConverter() DateTime createdAt,@NullableTimestampConverter() DateTime? updatedAt
+ String id, Industry? industry, EmploymentType? employmentType, int hourlyWage, String startTime, String endTime, int breakMinutes, String breakStartTime, int overtimeRatePercent, List<int> holidayWeekdays, int? payday,@TimestampConverter() DateTime createdAt,@NullableTimestampConverter() DateTime? updatedAt
 });
 
 
@@ -311,7 +317,7 @@ class __$WorkplaceCopyWithImpl<$Res>
 
 /// Create a copy of Workplace
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? industry = freezed,Object? employmentType = freezed,Object? hourlyWage = null,Object? startTime = null,Object? endTime = null,Object? breakMinutes = null,Object? breakStartTime = null,Object? overtimeRatePercent = null,Object? holidayWeekdays = null,Object? createdAt = null,Object? updatedAt = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? industry = freezed,Object? employmentType = freezed,Object? hourlyWage = null,Object? startTime = null,Object? endTime = null,Object? breakMinutes = null,Object? breakStartTime = null,Object? overtimeRatePercent = null,Object? holidayWeekdays = null,Object? payday = freezed,Object? createdAt = null,Object? updatedAt = freezed,}) {
   return _then(_Workplace(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,industry: freezed == industry ? _self.industry : industry // ignore: cast_nullable_to_non_nullable
@@ -323,7 +329,8 @@ as String,breakMinutes: null == breakMinutes ? _self.breakMinutes : breakMinutes
 as int,breakStartTime: null == breakStartTime ? _self.breakStartTime : breakStartTime // ignore: cast_nullable_to_non_nullable
 as String,overtimeRatePercent: null == overtimeRatePercent ? _self.overtimeRatePercent : overtimeRatePercent // ignore: cast_nullable_to_non_nullable
 as int,holidayWeekdays: null == holidayWeekdays ? _self._holidayWeekdays : holidayWeekdays // ignore: cast_nullable_to_non_nullable
-as List<int>,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
+as List<int>,payday: freezed == payday ? _self.payday : payday // ignore: cast_nullable_to_non_nullable
+as int?,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime,updatedAt: freezed == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,
   ));

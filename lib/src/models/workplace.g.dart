@@ -24,6 +24,7 @@ _Workplace _$WorkplaceFromJson(Map<String, dynamic> json) => _Workplace(
           ?.map((e) => (e as num).toInt())
           .toList() ??
       const [],
+  payday: (json['payday'] as num?)?.toInt(),
   createdAt: const TimestampConverter().fromJson(json['createdAt']),
   updatedAt: const NullableTimestampConverter().fromJson(json['updatedAt']),
 );
@@ -41,6 +42,7 @@ Map<String, dynamic> _$WorkplaceToJson(
   'breakStartTime': instance.breakStartTime,
   'overtimeRatePercent': instance.overtimeRatePercent,
   'holidayWeekdays': instance.holidayWeekdays,
+  'payday': instance.payday,
   'createdAt': const TimestampConverter().toJson(instance.createdAt),
   'updatedAt': const NullableTimestampConverter().toJson(instance.updatedAt),
 };

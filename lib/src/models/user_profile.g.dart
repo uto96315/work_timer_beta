@@ -17,6 +17,7 @@ _UserProfile _$UserProfileFromJson(Map<String, dynamic> json) => _UserProfile(
   notificationsEnabled: json['notificationsEnabled'] as bool? ?? true,
   notifyClockInReminder: json['notifyClockInReminder'] as bool? ?? true,
   notifyClockOutReminder: json['notifyClockOutReminder'] as bool? ?? true,
+  notifyPayday: json['notifyPayday'] as bool? ?? true,
   updatedAt: const NullableTimestampConverter().fromJson(json['updatedAt']),
 );
 
@@ -31,6 +32,7 @@ Map<String, dynamic> _$UserProfileToJson(
   'notificationsEnabled': instance.notificationsEnabled,
   'notifyClockInReminder': instance.notifyClockInReminder,
   'notifyClockOutReminder': instance.notifyClockOutReminder,
+  'notifyPayday': instance.notifyPayday,
   'updatedAt': const NullableTimestampConverter().toJson(instance.updatedAt),
 };
 

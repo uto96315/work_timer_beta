@@ -23,6 +23,7 @@ abstract class UserProfile with _$UserProfile {
     @Default(true) bool notificationsEnabled,
     @Default(true) bool notifyClockInReminder,
     @Default(true) bool notifyClockOutReminder,
+    @Default(true) bool notifyPayday,
     @NullableTimestampConverter() DateTime? updatedAt,
   }) = _UserProfile;
 

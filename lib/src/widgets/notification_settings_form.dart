@@ -53,6 +53,14 @@ class NotificationSettingsForm extends ConsumerWidget {
               : (v) =>
                     _update(ref, profile.copyWith(notifyClockOutReminder: v)),
         ),
+        SwitchListTile.adaptive(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('給料日の通知'),
+          value: profile.notifyPayday,
+          onChanged: !profile.notificationsEnabled
+              ? null
+              : (v) => _update(ref, profile.copyWith(notifyPayday: v)),
+        ),
       ],
     );
   }

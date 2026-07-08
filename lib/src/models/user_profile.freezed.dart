@@ -15,7 +15,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$UserProfile {
 
- Gender? get gender; AgeBracket? get ageBracket; String? get prefecture; JobChangeIntention? get jobChangeIntention; bool get notificationsEnabled; bool get notifyClockInReminder; bool get notifyClockOutReminder;@NullableTimestampConverter() DateTime? get updatedAt;
+ Gender? get gender; AgeBracket? get ageBracket; String? get prefecture; JobChangeIntention? get jobChangeIntention; bool get notificationsEnabled; bool get notifyClockInReminder; bool get notifyClockOutReminder; bool get notifyPayday;@NullableTimestampConverter() DateTime? get updatedAt;
 /// Create a copy of UserProfile
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +28,16 @@ $UserProfileCopyWith<UserProfile> get copyWith => _$UserProfileCopyWithImpl<User
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is UserProfile&&(identical(other.gender, gender) || other.gender == gender)&&(identical(other.ageBracket, ageBracket) || other.ageBracket == ageBracket)&&(identical(other.prefecture, prefecture) || other.prefecture == prefecture)&&(identical(other.jobChangeIntention, jobChangeIntention) || other.jobChangeIntention == jobChangeIntention)&&(identical(other.notificationsEnabled, notificationsEnabled) || other.notificationsEnabled == notificationsEnabled)&&(identical(other.notifyClockInReminder, notifyClockInReminder) || other.notifyClockInReminder == notifyClockInReminder)&&(identical(other.notifyClockOutReminder, notifyClockOutReminder) || other.notifyClockOutReminder == notifyClockOutReminder)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is UserProfile&&(identical(other.gender, gender) || other.gender == gender)&&(identical(other.ageBracket, ageBracket) || other.ageBracket == ageBracket)&&(identical(other.prefecture, prefecture) || other.prefecture == prefecture)&&(identical(other.jobChangeIntention, jobChangeIntention) || other.jobChangeIntention == jobChangeIntention)&&(identical(other.notificationsEnabled, notificationsEnabled) || other.notificationsEnabled == notificationsEnabled)&&(identical(other.notifyClockInReminder, notifyClockInReminder) || other.notifyClockInReminder == notifyClockInReminder)&&(identical(other.notifyClockOutReminder, notifyClockOutReminder) || other.notifyClockOutReminder == notifyClockOutReminder)&&(identical(other.notifyPayday, notifyPayday) || other.notifyPayday == notifyPayday)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,gender,ageBracket,prefecture,jobChangeIntention,notificationsEnabled,notifyClockInReminder,notifyClockOutReminder,updatedAt);
+int get hashCode => Object.hash(runtimeType,gender,ageBracket,prefecture,jobChangeIntention,notificationsEnabled,notifyClockInReminder,notifyClockOutReminder,notifyPayday,updatedAt);
 
 @override
 String toString() {
-  return 'UserProfile(gender: $gender, ageBracket: $ageBracket, prefecture: $prefecture, jobChangeIntention: $jobChangeIntention, notificationsEnabled: $notificationsEnabled, notifyClockInReminder: $notifyClockInReminder, notifyClockOutReminder: $notifyClockOutReminder, updatedAt: $updatedAt)';
+  return 'UserProfile(gender: $gender, ageBracket: $ageBracket, prefecture: $prefecture, jobChangeIntention: $jobChangeIntention, notificationsEnabled: $notificationsEnabled, notifyClockInReminder: $notifyClockInReminder, notifyClockOutReminder: $notifyClockOutReminder, notifyPayday: $notifyPayday, updatedAt: $updatedAt)';
 }
 
 
@@ -48,7 +48,7 @@ abstract mixin class $UserProfileCopyWith<$Res>  {
   factory $UserProfileCopyWith(UserProfile value, $Res Function(UserProfile) _then) = _$UserProfileCopyWithImpl;
 @useResult
 $Res call({
- Gender? gender, AgeBracket? ageBracket, String? prefecture, JobChangeIntention? jobChangeIntention, bool notificationsEnabled, bool notifyClockInReminder, bool notifyClockOutReminder,@NullableTimestampConverter() DateTime? updatedAt
+ Gender? gender, AgeBracket? ageBracket, String? prefecture, JobChangeIntention? jobChangeIntention, bool notificationsEnabled, bool notifyClockInReminder, bool notifyClockOutReminder, bool notifyPayday,@NullableTimestampConverter() DateTime? updatedAt
 });
 
 
@@ -65,7 +65,7 @@ class _$UserProfileCopyWithImpl<$Res>
 
 /// Create a copy of UserProfile
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? gender = freezed,Object? ageBracket = freezed,Object? prefecture = freezed,Object? jobChangeIntention = freezed,Object? notificationsEnabled = null,Object? notifyClockInReminder = null,Object? notifyClockOutReminder = null,Object? updatedAt = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? gender = freezed,Object? ageBracket = freezed,Object? prefecture = freezed,Object? jobChangeIntention = freezed,Object? notificationsEnabled = null,Object? notifyClockInReminder = null,Object? notifyClockOutReminder = null,Object? notifyPayday = null,Object? updatedAt = freezed,}) {
   return _then(_self.copyWith(
 gender: freezed == gender ? _self.gender : gender // ignore: cast_nullable_to_non_nullable
 as Gender?,ageBracket: freezed == ageBracket ? _self.ageBracket : ageBracket // ignore: cast_nullable_to_non_nullable
@@ -74,6 +74,7 @@ as String?,jobChangeIntention: freezed == jobChangeIntention ? _self.jobChangeIn
 as JobChangeIntention?,notificationsEnabled: null == notificationsEnabled ? _self.notificationsEnabled : notificationsEnabled // ignore: cast_nullable_to_non_nullable
 as bool,notifyClockInReminder: null == notifyClockInReminder ? _self.notifyClockInReminder : notifyClockInReminder // ignore: cast_nullable_to_non_nullable
 as bool,notifyClockOutReminder: null == notifyClockOutReminder ? _self.notifyClockOutReminder : notifyClockOutReminder // ignore: cast_nullable_to_non_nullable
+as bool,notifyPayday: null == notifyPayday ? _self.notifyPayday : notifyPayday // ignore: cast_nullable_to_non_nullable
 as bool,updatedAt: freezed == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,
   ));
@@ -160,10 +161,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( Gender? gender,  AgeBracket? ageBracket,  String? prefecture,  JobChangeIntention? jobChangeIntention,  bool notificationsEnabled,  bool notifyClockInReminder,  bool notifyClockOutReminder, @NullableTimestampConverter()  DateTime? updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( Gender? gender,  AgeBracket? ageBracket,  String? prefecture,  JobChangeIntention? jobChangeIntention,  bool notificationsEnabled,  bool notifyClockInReminder,  bool notifyClockOutReminder,  bool notifyPayday, @NullableTimestampConverter()  DateTime? updatedAt)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _UserProfile() when $default != null:
-return $default(_that.gender,_that.ageBracket,_that.prefecture,_that.jobChangeIntention,_that.notificationsEnabled,_that.notifyClockInReminder,_that.notifyClockOutReminder,_that.updatedAt);case _:
+return $default(_that.gender,_that.ageBracket,_that.prefecture,_that.jobChangeIntention,_that.notificationsEnabled,_that.notifyClockInReminder,_that.notifyClockOutReminder,_that.notifyPayday,_that.updatedAt);case _:
   return orElse();
 
 }
@@ -181,10 +182,10 @@ return $default(_that.gender,_that.ageBracket,_that.prefecture,_that.jobChangeIn
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( Gender? gender,  AgeBracket? ageBracket,  String? prefecture,  JobChangeIntention? jobChangeIntention,  bool notificationsEnabled,  bool notifyClockInReminder,  bool notifyClockOutReminder, @NullableTimestampConverter()  DateTime? updatedAt)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( Gender? gender,  AgeBracket? ageBracket,  String? prefecture,  JobChangeIntention? jobChangeIntention,  bool notificationsEnabled,  bool notifyClockInReminder,  bool notifyClockOutReminder,  bool notifyPayday, @NullableTimestampConverter()  DateTime? updatedAt)  $default,) {final _that = this;
 switch (_that) {
 case _UserProfile():
-return $default(_that.gender,_that.ageBracket,_that.prefecture,_that.jobChangeIntention,_that.notificationsEnabled,_that.notifyClockInReminder,_that.notifyClockOutReminder,_that.updatedAt);case _:
+return $default(_that.gender,_that.ageBracket,_that.prefecture,_that.jobChangeIntention,_that.notificationsEnabled,_that.notifyClockInReminder,_that.notifyClockOutReminder,_that.notifyPayday,_that.updatedAt);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -201,10 +202,10 @@ return $default(_that.gender,_that.ageBracket,_that.prefecture,_that.jobChangeIn
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( Gender? gender,  AgeBracket? ageBracket,  String? prefecture,  JobChangeIntention? jobChangeIntention,  bool notificationsEnabled,  bool notifyClockInReminder,  bool notifyClockOutReminder, @NullableTimestampConverter()  DateTime? updatedAt)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( Gender? gender,  AgeBracket? ageBracket,  String? prefecture,  JobChangeIntention? jobChangeIntention,  bool notificationsEnabled,  bool notifyClockInReminder,  bool notifyClockOutReminder,  bool notifyPayday, @NullableTimestampConverter()  DateTime? updatedAt)?  $default,) {final _that = this;
 switch (_that) {
 case _UserProfile() when $default != null:
-return $default(_that.gender,_that.ageBracket,_that.prefecture,_that.jobChangeIntention,_that.notificationsEnabled,_that.notifyClockInReminder,_that.notifyClockOutReminder,_that.updatedAt);case _:
+return $default(_that.gender,_that.ageBracket,_that.prefecture,_that.jobChangeIntention,_that.notificationsEnabled,_that.notifyClockInReminder,_that.notifyClockOutReminder,_that.notifyPayday,_that.updatedAt);case _:
   return null;
 
 }
@@ -216,7 +217,7 @@ return $default(_that.gender,_that.ageBracket,_that.prefecture,_that.jobChangeIn
 @JsonSerializable()
 
 class _UserProfile implements UserProfile {
-  const _UserProfile({this.gender, this.ageBracket, this.prefecture, this.jobChangeIntention, this.notificationsEnabled = true, this.notifyClockInReminder = true, this.notifyClockOutReminder = true, @NullableTimestampConverter() this.updatedAt});
+  const _UserProfile({this.gender, this.ageBracket, this.prefecture, this.jobChangeIntention, this.notificationsEnabled = true, this.notifyClockInReminder = true, this.notifyClockOutReminder = true, this.notifyPayday = true, @NullableTimestampConverter() this.updatedAt});
   factory _UserProfile.fromJson(Map<String, dynamic> json) => _$UserProfileFromJson(json);
 
 @override final  Gender? gender;
@@ -226,6 +227,7 @@ class _UserProfile implements UserProfile {
 @override@JsonKey() final  bool notificationsEnabled;
 @override@JsonKey() final  bool notifyClockInReminder;
 @override@JsonKey() final  bool notifyClockOutReminder;
+@override@JsonKey() final  bool notifyPayday;
 @override@NullableTimestampConverter() final  DateTime? updatedAt;
 
 /// Create a copy of UserProfile
@@ -241,16 +243,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _UserProfile&&(identical(other.gender, gender) || other.gender == gender)&&(identical(other.ageBracket, ageBracket) || other.ageBracket == ageBracket)&&(identical(other.prefecture, prefecture) || other.prefecture == prefecture)&&(identical(other.jobChangeIntention, jobChangeIntention) || other.jobChangeIntention == jobChangeIntention)&&(identical(other.notificationsEnabled, notificationsEnabled) || other.notificationsEnabled == notificationsEnabled)&&(identical(other.notifyClockInReminder, notifyClockInReminder) || other.notifyClockInReminder == notifyClockInReminder)&&(identical(other.notifyClockOutReminder, notifyClockOutReminder) || other.notifyClockOutReminder == notifyClockOutReminder)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _UserProfile&&(identical(other.gender, gender) || other.gender == gender)&&(identical(other.ageBracket, ageBracket) || other.ageBracket == ageBracket)&&(identical(other.prefecture, prefecture) || other.prefecture == prefecture)&&(identical(other.jobChangeIntention, jobChangeIntention) || other.jobChangeIntention == jobChangeIntention)&&(identical(other.notificationsEnabled, notificationsEnabled) || other.notificationsEnabled == notificationsEnabled)&&(identical(other.notifyClockInReminder, notifyClockInReminder) || other.notifyClockInReminder == notifyClockInReminder)&&(identical(other.notifyClockOutReminder, notifyClockOutReminder) || other.notifyClockOutReminder == notifyClockOutReminder)&&(identical(other.notifyPayday, notifyPayday) || other.notifyPayday == notifyPayday)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,gender,ageBracket,prefecture,jobChangeIntention,notificationsEnabled,notifyClockInReminder,notifyClockOutReminder,updatedAt);
+int get hashCode => Object.hash(runtimeType,gender,ageBracket,prefecture,jobChangeIntention,notificationsEnabled,notifyClockInReminder,notifyClockOutReminder,notifyPayday,updatedAt);
 
 @override
 String toString() {
-  return 'UserProfile(gender: $gender, ageBracket: $ageBracket, prefecture: $prefecture, jobChangeIntention: $jobChangeIntention, notificationsEnabled: $notificationsEnabled, notifyClockInReminder: $notifyClockInReminder, notifyClockOutReminder: $notifyClockOutReminder, updatedAt: $updatedAt)';
+  return 'UserProfile(gender: $gender, ageBracket: $ageBracket, prefecture: $prefecture, jobChangeIntention: $jobChangeIntention, notificationsEnabled: $notificationsEnabled, notifyClockInReminder: $notifyClockInReminder, notifyClockOutReminder: $notifyClockOutReminder, notifyPayday: $notifyPayday, updatedAt: $updatedAt)';
 }
 
 
@@ -261,7 +263,7 @@ abstract mixin class _$UserProfileCopyWith<$Res> implements $UserProfileCopyWith
   factory _$UserProfileCopyWith(_UserProfile value, $Res Function(_UserProfile) _then) = __$UserProfileCopyWithImpl;
 @override @useResult
 $Res call({
- Gender? gender, AgeBracket? ageBracket, String? prefecture, JobChangeIntention? jobChangeIntention, bool notificationsEnabled, bool notifyClockInReminder, bool notifyClockOutReminder,@NullableTimestampConverter() DateTime? updatedAt
+ Gender? gender, AgeBracket? ageBracket, String? prefecture, JobChangeIntention? jobChangeIntention, bool notificationsEnabled, bool notifyClockInReminder, bool notifyClockOutReminder, bool notifyPayday,@NullableTimestampConverter() DateTime? updatedAt
 });
 
 
@@ -278,7 +280,7 @@ class __$UserProfileCopyWithImpl<$Res>
 
 /// Create a copy of UserProfile
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? gender = freezed,Object? ageBracket = freezed,Object? prefecture = freezed,Object? jobChangeIntention = freezed,Object? notificationsEnabled = null,Object? notifyClockInReminder = null,Object? notifyClockOutReminder = null,Object? updatedAt = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? gender = freezed,Object? ageBracket = freezed,Object? prefecture = freezed,Object? jobChangeIntention = freezed,Object? notificationsEnabled = null,Object? notifyClockInReminder = null,Object? notifyClockOutReminder = null,Object? notifyPayday = null,Object? updatedAt = freezed,}) {
   return _then(_UserProfile(
 gender: freezed == gender ? _self.gender : gender // ignore: cast_nullable_to_non_nullable
 as Gender?,ageBracket: freezed == ageBracket ? _self.ageBracket : ageBracket // ignore: cast_nullable_to_non_nullable
@@ -287,6 +289,7 @@ as String?,jobChangeIntention: freezed == jobChangeIntention ? _self.jobChangeIn
 as JobChangeIntention?,notificationsEnabled: null == notificationsEnabled ? _self.notificationsEnabled : notificationsEnabled // ignore: cast_nullable_to_non_nullable
 as bool,notifyClockInReminder: null == notifyClockInReminder ? _self.notifyClockInReminder : notifyClockInReminder // ignore: cast_nullable_to_non_nullable
 as bool,notifyClockOutReminder: null == notifyClockOutReminder ? _self.notifyClockOutReminder : notifyClockOutReminder // ignore: cast_nullable_to_non_nullable
+as bool,notifyPayday: null == notifyPayday ? _self.notifyPayday : notifyPayday // ignore: cast_nullable_to_non_nullable
 as bool,updatedAt: freezed == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as DateTime?,
   ));

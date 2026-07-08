@@ -35,6 +35,9 @@ abstract class Workplace with _$Workplace {
     @Default(25) int overtimeRatePercent,
     /// ISO weekday numbers (1=Mon .. 7=Sun) treated as days off.
     @Default([]) List<int> holidayWeekdays,
+    /// Day of the month (1-31) salary is paid on, used to schedule a payday
+    /// reminder notification. Null means not configured.
+    int? payday,
     @TimestampConverter() required DateTime createdAt,
     @NullableTimestampConverter() DateTime? updatedAt,
   }) = _Workplace;
