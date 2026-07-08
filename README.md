@@ -1,4 +1,4 @@
-# work_timer
+# ヌリツブ
 
 バイト・仕事の出退勤を記録し、時給ベースの給与をリアルタイムで可視化するFlutterアプリ。
 
@@ -19,7 +19,9 @@ Firebase(Auth / Firestore)を利用しています。
 4. `flutter pub get`
 5. `flutter run`
 
-ローカルでFirebase Emulator Suiteを使う場合は `flutter run --dart-define=USE_FIREBASE_EMULATOR=true`。
+ローカルでFirebase Emulator Suiteを使う場合は、先に別ターミナルで `firebase emulators:start` を起動してから `flutter run --dart-define=USE_FIREBASE_EMULATOR=true` を実行する。エミュレータが起動していない状態でこのフラグを付けても、`localhost:9099`（Auth）や`localhost:8090`（Firestore）に接続できず `network-request-failed` などのエラーになる。
+
+また `--dart-define` の値はコンパイル時に埋め込まれるため、ホットリスタート（`r`）では新しい値が反映されない。フラグを変えたときは `flutter run` をやり直すこと。
 
 ## 今後追加したい機能（メモ）
 

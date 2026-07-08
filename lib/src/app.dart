@@ -20,7 +20,7 @@ class WorkTimerApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = ColorScheme.fromSeed(seedColor: const Color(0xFF0EA894));
     return MaterialApp(
-      title: '仕事タイマー',
+      title: 'ヌリツブ',
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: colorScheme,
