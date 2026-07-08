@@ -10,7 +10,9 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'firebase_options.dart';
 import 'src/app.dart';
 import 'src/providers/notification_providers.dart';
+import 'src/providers/widget_sync_providers.dart';
 import 'src/services/notification_service.dart';
+import 'src/services/widget_sync_service.dart';
 
 /// Run with `--dart-define=USE_FIREBASE_EMULATOR=true` to point Auth and
 /// Firestore at the local Firebase Emulator Suite (`firebase emulators:start`)
@@ -32,10 +34,14 @@ void main() async {
   final notificationService = NotificationService(FlutterLocalNotificationsPlugin());
   await notificationService.init();
 
+  final widgetSyncService = WidgetSyncService();
+  await widgetSyncService.init();
+
   runApp(
     ProviderScope(
       overrides: [
         notificationServiceProvider.overrideWithValue(notificationService),
+        widgetSyncServiceProvider.overrideWithValue(widgetSyncService),
       ],
       child: const WorkTimerApp(),
     ),

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'providers/auth_providers.dart';
 import 'providers/notification_providers.dart';
+import 'providers/widget_sync_providers.dart';
 import 'providers/workplace_providers.dart';
 import 'screens/account/account_screen.dart';
 import 'screens/home/home_screen.dart';
@@ -34,7 +35,14 @@ class WorkTimerApp extends StatelessWidget {
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: const Color(0xFFF4F6F7),
+          // Matches the pill background used by SettingsPickerRow/TimeField
+          // (surfaceContainerHighest at 40% alpha) so text inputs sit inside
+          // white cards the same way as the picker-style rows, instead of
+          // looking like holes cut through to the page background.
+          fillColor: Color.alphaBlend(
+            colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+            Colors.white,
+          ),
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
@@ -111,6 +119,8 @@ class _RootScaffoldState extends ConsumerState<_RootScaffold> {
     // Keeps scheduled local notifications in sync with the workplace hours
     // and notification prefs whenever either changes.
     ref.watch(notificationSyncProvider);
+    // Keeps the iOS home-screen widget's shared data in sync.
+    ref.watch(widgetSyncProvider);
     return Scaffold(
       extendBody: true,
       body: IndexedStack(index: _index, children: _screens),

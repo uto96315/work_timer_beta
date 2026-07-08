@@ -139,7 +139,8 @@ class SettingsPickerRow<T> extends StatelessWidget {
 
 /// Shows a "完了" bar directly above the keyboard whenever any field in
 /// [child] has focus, since number-pad keyboards have no built-in done key
-/// (particularly on iOS) to dismiss them.
+/// (particularly on iOS) to dismiss them. Also unfocuses whichever field is
+/// active whenever the user taps anywhere outside of it.
 class KeyboardDoneScaffold extends StatelessWidget {
   const KeyboardDoneScaffold({
     super.key,
@@ -157,7 +158,13 @@ class KeyboardDoneScaffold extends StatelessWidget {
       appBar: appBar,
       body: Column(
         children: [
-          Expanded(child: body),
+          Expanded(
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTap: () => FocusScope.of(context).unfocus(),
+              child: body,
+            ),
+          ),
           if (keyboardVisible)
             ColoredBox(
               color: Theme.of(context).colorScheme.surfaceContainerHighest,
