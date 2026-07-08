@@ -181,10 +181,11 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
             ),
             const SizedBox(height: 10),
           ],
-          TextFormField(
+          SettingsAmountField(
+            label: '時給',
             controller: _wageController,
             focusNode: _wageFocus,
-            decoration: const InputDecoration(labelText: '時給（円）'),
+            suffixText: '円',
             keyboardType: TextInputType.number,
             textInputAction: TextInputAction.done,
             validator: (v) => (v == null || int.tryParse(v) == null) ? '数値を入力してください' : null,
@@ -211,26 +212,25 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
             onChanged: (t) => _onPickerChanged(() => _breakStartTime = t),
           ),
           const SizedBox(height: 10),
-          TextFormField(
+          SettingsAmountField(
+            label: '休憩時間',
             controller: _breakController,
             focusNode: _breakFocus,
-            decoration: const InputDecoration(labelText: '休憩時間（分）'),
+            suffixText: '分',
             keyboardType: TextInputType.number,
             textInputAction: TextInputAction.done,
             validator: (v) => (v == null || int.tryParse(v) == null) ? '数値を入力してください' : null,
           ),
           const SizedBox(height: 10),
-          TextFormField(
+          SettingsAmountField(
+            label: '残業時の時給アップ率',
             controller: _overtimeController,
             focusNode: _overtimeFocus,
-            decoration: const InputDecoration(
-              labelText: '残業時の時給アップ率（%）',
-              helperText: '定時を過ぎたら時給が何%増えるか。目安は25%（法律上の最低ライン）',
-              helperMaxLines: 2,
-            ),
+            suffixText: '%',
             keyboardType: TextInputType.number,
             textInputAction: TextInputAction.done,
             validator: (v) => (v == null || int.tryParse(v) == null) ? '数値を入力してください' : null,
+            helperText: '定時を過ぎたら時給が何%増えるか。目安は25%（法律上の最低ライン）',
           ),
           if (!_isEditing) ...[
             const SizedBox(height: 20),

@@ -137,6 +137,94 @@ class SettingsPickerRow<T> extends StatelessWidget {
   }
 }
 
+/// A row matching [SettingsPickerRow]'s look (rounded pill, label left,
+/// bold value right) but with the value replaced by an inline editable
+/// [TextFormField], for short free-text/numeric values (e.g. an hourly
+/// wage) that don't fit the fixed-choice picker pattern.
+class SettingsAmountField extends StatelessWidget {
+  const SettingsAmountField({
+    super.key,
+    required this.label,
+    required this.controller,
+    this.focusNode,
+    this.suffixText,
+    this.keyboardType,
+    this.textInputAction,
+    this.validator,
+    this.helperText,
+  });
+
+  final String label;
+  final TextEditingController controller;
+  final FocusNode? focusNode;
+  final String? suffixText;
+  final TextInputType? keyboardType;
+  final TextInputAction? textInputAction;
+  final String? Function(String?)? validator;
+  final String? helperText;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final valueStyle = Theme.of(context).textTheme.bodyMedium?.copyWith(
+      color: scheme.onSurfaceVariant,
+      fontWeight: FontWeight.w600,
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          decoration: BoxDecoration(
+            color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
+              ),
+              SizedBox(
+                width: 96,
+                child: TextFormField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  keyboardType: keyboardType,
+                  textInputAction: textInputAction,
+                  validator: validator,
+                  textAlign: TextAlign.right,
+                  style: valueStyle,
+                  decoration: InputDecoration(
+                    isCollapsed: true,
+                    filled: false,
+                    border: InputBorder.none,
+                    suffixText: suffixText,
+                    suffixStyle: valueStyle,
+                    errorStyle: Theme.of(
+                      context,
+                    ).textTheme.labelSmall?.copyWith(color: scheme.error),
+                    errorMaxLines: 2,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (helperText != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+            child: Text(
+              helperText!,
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
 /// Shows a "完了" bar directly above the keyboard whenever any field in
 /// [child] has focus, since number-pad keyboards have no built-in done key
 /// (particularly on iOS) to dismiss them. Also unfocuses whichever field is

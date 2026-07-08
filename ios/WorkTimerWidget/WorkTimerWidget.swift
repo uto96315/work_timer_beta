@@ -160,6 +160,15 @@ private let yenFormatter: NumberFormatter = {
     return formatter
 }()
 
+// Fixed (non-adaptive) colors so the widget always renders as a light card
+// with dark text, matching the Flutter app's light-only theme — regardless
+// of whether the system/Smart Stack context is in dark mode. `.primary` /
+// `.secondary` would otherwise resolve to near-white text on our forced
+// white background.
+private let widgetAccentColor = Color(red: 0.05, green: 0.56, blue: 0.52)
+private let primaryTextColor = Color(red: 0.1, green: 0.12, blue: 0.13)
+private let secondaryTextColor = Color(red: 0.45, green: 0.48, blue: 0.49)
+
 struct WorkTimerWidgetEntryView: View {
     var entry: Provider.Entry
 
@@ -168,25 +177,26 @@ struct WorkTimerWidgetEntryView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 4) {
                 Image(systemName: stats.isFinished ? "checkmark.circle.fill" : (stats.isWorking ? "clock.fill" : "clock"))
-                    .foregroundStyle(Color(red: 0.05, green: 0.56, blue: 0.52))
+                    .foregroundStyle(widgetAccentColor)
                     .font(.caption)
                 Text(stats.isFinished ? "退勤済み" : (stats.isWorking ? "勤務中" : "未出勤"))
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(secondaryTextColor)
             }
             Text(entry.snapshot.hasWorkplace ? (yenFormatter.string(from: NSNumber(value: stats.totalYen)) ?? "¥0") : "-")
                 .font(.title2.bold())
+                .foregroundStyle(primaryTextColor)
                 .minimumScaleFactor(0.7)
                 .lineLimit(1)
             ProgressView(value: stats.progress)
-                .tint(Color(red: 0.05, green: 0.56, blue: 0.52))
+                .tint(widgetAccentColor)
             HStack {
                 Text("\(Int(stats.progress * 100))%")
                 Spacer()
                 Text(stats.remainingLabel)
             }
             .font(.caption2)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(secondaryTextColor)
         }
         .padding()
     }
@@ -198,7 +208,7 @@ struct WorkTimerWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: Provider()) { entry in
             WorkTimerWidgetEntryView(entry: entry)
-                .containerBackground(.white, for: .widget)
+                .containerBackground(Color.white, for: .widget)
         }
         .configurationDisplayName("仕事タイマー")
         .description("今日の進捗と稼いだ金額を表示します。")

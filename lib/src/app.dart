@@ -35,14 +35,7 @@ class WorkTimerApp extends StatelessWidget {
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          // Matches the pill background used by SettingsPickerRow/TimeField
-          // (surfaceContainerHighest at 40% alpha) so text inputs sit inside
-          // white cards the same way as the picker-style rows, instead of
-          // looking like holes cut through to the page background.
-          fillColor: Color.alphaBlend(
-            colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
-            Colors.white,
-          ),
+          fillColor: const Color(0xFFF4F6F7),
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
