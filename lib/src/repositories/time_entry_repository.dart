@@ -90,6 +90,13 @@ class TimeEntryRepository {
     });
   }
 
+  /// Reopens an entry that was just clocked out, undoing the clock-out.
+  Future<void> undoClockOut(String uid, String workplaceId, String entryId) async {
+    await _collection(uid, workplaceId).doc(entryId).update({
+      'clockOut': FieldValue.delete(),
+    });
+  }
+
   /// Corrects an entry's punch times for the current day only, preserving
   /// the original values the first time a correction is made.
   Future<void> correct(
