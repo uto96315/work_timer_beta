@@ -41,6 +41,18 @@ Stream<DateTime> secondTicker(Ref ref) {
   return Stream<DateTime>.periodic(const Duration(seconds: 1), (_) => DateTime.now());
 }
 
+/// Entry ids for which the user has tapped "残業を記録する" on the frozen-count
+/// prompt, opting this shift back into live overtime counting for the rest
+/// of the app session. Intentionally in-memory only (not persisted) — it's a
+/// one-shift decision, not a setting.
+@riverpod
+class OvertimeApproval extends _$OvertimeApproval {
+  @override
+  Set<String> build() => {};
+
+  void approve(String entryId) => state = {...state, entryId};
+}
+
 @riverpod
 EarningsResult? liveEarnings(Ref ref) {
   final workplace = ref.watch(primaryWorkplaceProvider).value;

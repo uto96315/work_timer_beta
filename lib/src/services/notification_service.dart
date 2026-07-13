@@ -51,6 +51,13 @@ class NotificationService {
 
   int _id(int weekday, int slot) => weekday * 10 + slot;
 
+  /// Number of "still on overtime" reminders to schedule, past the
+  /// weekday*10+1 clock-out reminder slot, spaced by
+  /// [UserProfile.overtimeReminderIntervalHours]. Fixed at 3 occurrences —
+  /// local notifications can't dynamically extend based on actual clock-out,
+  /// so this is a reasonable cap rather than tracking the real shift length.
+  static const _overtimeReminderCount = 3;
+
   /// Outside the 10-72 range used by [_id]'s weekday*10+slot scheme.
   static const _paydayId = 900;
 
@@ -123,13 +130,34 @@ class NotificationService {
       if (profile.notifyClockOutReminder) {
         await _plugin.zonedSchedule(
           id: _id(weekday, 1),
-          title: '退勤予定の時間です',
-          body: '${workplace.endTime} 退勤予定です。お疲れ様でした。',
+          title: profile.autoOvertimeEnabled ? '退勤予定の時間です' : '定時になりました',
+          body: profile.autoOvertimeEnabled
+              ? '${workplace.endTime} 退勤予定です。お疲れ様でした。'
+              : '${workplace.endTime} になりました。残業を記録する場合はアプリを開いて確認しましょう。',
           scheduledDate: _nextInstanceOf(_timeToday(now, workplace.endTime), weekday),
           notificationDetails: details,
           androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
           matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
         );
+      }
+      final reminderInterval = profile.overtimeReminderIntervalHours;
+      if (profile.autoOvertimeEnabled && reminderInterval > 0) {
+        for (var i = 0; i < _overtimeReminderCount; i++) {
+          final hoursAfterEnd = reminderInterval * (i + 1);
+          final reminderTime = _timeToday(
+            now,
+            workplace.endTime,
+          ).add(Duration(hours: hoursAfterEnd));
+          await _plugin.zonedSchedule(
+            id: _id(weekday, 2 + i),
+            title: '残業中です',
+            body: '定時から$hoursAfterEnd時間経過しました。忘れずに退勤打刻をしましょう。',
+            scheduledDate: _nextInstanceOf(reminderTime, weekday),
+            notificationDetails: details,
+            androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+            matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+          );
+        }
       }
     }
 

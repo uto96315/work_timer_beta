@@ -255,6 +255,76 @@ final class SecondTickerProvider
 
 String _$secondTickerHash() => r'fc737c0ef0fb4b2417699611041a5ecd1a134bb3';
 
+/// Entry ids for which the user has tapped "残業を記録する" on the frozen-count
+/// prompt, opting this shift back into live overtime counting for the rest
+/// of the app session. Intentionally in-memory only (not persisted) — it's a
+/// one-shift decision, not a setting.
+
+@ProviderFor(OvertimeApproval)
+final overtimeApprovalProvider = OvertimeApprovalProvider._();
+
+/// Entry ids for which the user has tapped "残業を記録する" on the frozen-count
+/// prompt, opting this shift back into live overtime counting for the rest
+/// of the app session. Intentionally in-memory only (not persisted) — it's a
+/// one-shift decision, not a setting.
+final class OvertimeApprovalProvider
+    extends $NotifierProvider<OvertimeApproval, Set<String>> {
+  /// Entry ids for which the user has tapped "残業を記録する" on the frozen-count
+  /// prompt, opting this shift back into live overtime counting for the rest
+  /// of the app session. Intentionally in-memory only (not persisted) — it's a
+  /// one-shift decision, not a setting.
+  OvertimeApprovalProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'overtimeApprovalProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$overtimeApprovalHash();
+
+  @$internal
+  @override
+  OvertimeApproval create() => OvertimeApproval();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(Set<String> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<Set<String>>(value),
+    );
+  }
+}
+
+String _$overtimeApprovalHash() => r'cfa41d7c8c20bd4703fa00a7bd129154f8ad766e';
+
+/// Entry ids for which the user has tapped "残業を記録する" on the frozen-count
+/// prompt, opting this shift back into live overtime counting for the rest
+/// of the app session. Intentionally in-memory only (not persisted) — it's a
+/// one-shift decision, not a setting.
+
+abstract class _$OvertimeApproval extends $Notifier<Set<String>> {
+  Set<String> build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<Set<String>, Set<String>>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<Set<String>, Set<String>>,
+              Set<String>,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, build);
+  }
+}
+
 @ProviderFor(liveEarnings)
 final liveEarningsProvider = LiveEarningsProvider._();
 

@@ -24,6 +24,17 @@ abstract class UserProfile with _$UserProfile {
     @Default(true) bool notifyClockInReminder,
     @Default(true) bool notifyClockOutReminder,
     @Default(true) bool notifyPayday,
+    /// When false (the default), live earnings/worked-time stop counting once
+    /// the scheduled end time passes, and the user is prompted via
+    /// notification/in-app banner to decide whether to record overtime.
+    @Default(false) bool autoOvertimeEnabled,
+    /// Only relevant when [autoOvertimeEnabled] is true: sends a reminder
+    /// notification every N hours while overtime is ongoing. 0 means no
+    /// reminder; otherwise one of 1/2/3.
+    @Default(0) int overtimeReminderIntervalHours,
+    /// Cumulative food earned from worked hours, used to grow the pet (see
+    /// [lib/src/util/pet_stage.dart]).
+    @Default(0) int totalFood,
     @NullableTimestampConverter() DateTime? updatedAt,
   }) = _UserProfile;
 

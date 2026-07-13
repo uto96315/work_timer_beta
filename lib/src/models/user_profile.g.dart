@@ -18,6 +18,10 @@ _UserProfile _$UserProfileFromJson(Map<String, dynamic> json) => _UserProfile(
   notifyClockInReminder: json['notifyClockInReminder'] as bool? ?? true,
   notifyClockOutReminder: json['notifyClockOutReminder'] as bool? ?? true,
   notifyPayday: json['notifyPayday'] as bool? ?? true,
+  autoOvertimeEnabled: json['autoOvertimeEnabled'] as bool? ?? false,
+  overtimeReminderIntervalHours:
+      (json['overtimeReminderIntervalHours'] as num?)?.toInt() ?? 0,
+  totalFood: (json['totalFood'] as num?)?.toInt() ?? 0,
   updatedAt: const NullableTimestampConverter().fromJson(json['updatedAt']),
 );
 
@@ -33,6 +37,9 @@ Map<String, dynamic> _$UserProfileToJson(
   'notifyClockInReminder': instance.notifyClockInReminder,
   'notifyClockOutReminder': instance.notifyClockOutReminder,
   'notifyPayday': instance.notifyPayday,
+  'autoOvertimeEnabled': instance.autoOvertimeEnabled,
+  'overtimeReminderIntervalHours': instance.overtimeReminderIntervalHours,
+  'totalFood': instance.totalFood,
   'updatedAt': const NullableTimestampConverter().toJson(instance.updatedAt),
 };
 

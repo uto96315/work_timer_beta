@@ -51,6 +51,7 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
   Industry? _industry;
   EmploymentType? _employmentType;
   int? _payday;
+  late Set<int> _holidayWeekdays;
 
   bool get _isEditing => widget.workplace != null;
 
@@ -68,6 +69,7 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
     _industry = w?.industry;
     _employmentType = w?.employmentType;
     _payday = w?.payday;
+    _holidayWeekdays = {...(w?.holidayWeekdays ?? const [])};
 
     _wageFocus = FocusNode()..addListener(() => _onFocusChange(_wageFocus));
     _breakFocus = FocusNode()..addListener(() => _onFocusChange(_breakFocus));
@@ -133,6 +135,7 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
           breakStartTime: _formatTime(_breakStartTime),
           overtimeRatePercent: int.parse(_overtimeController.text),
           payday: _payday,
+          holidayWeekdays: _holidayWeekdays.toList()..sort(),
           createdAt: DateTime.now(),
         ),
       );
@@ -149,6 +152,7 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
           breakStartTime: _formatTime(_breakStartTime),
           overtimeRatePercent: int.parse(_overtimeController.text),
           payday: _payday,
+          holidayWeekdays: _holidayWeekdays.toList()..sort(),
         ),
       );
     }
@@ -156,6 +160,17 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
 
   void _onPickerChanged(VoidCallback apply) {
     setState(apply);
+    if (_isEditing) _autoSave();
+  }
+
+  void _toggleHoliday(int weekday) {
+    setState(() {
+      if (_holidayWeekdays.contains(weekday)) {
+        _holidayWeekdays.remove(weekday);
+      } else {
+        _holidayWeekdays.add(weekday);
+      }
+    });
     if (_isEditing) _autoSave();
   }
 
@@ -244,12 +259,55 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
             labelOf: (v) => v == null ? _unset : '$v日',
             onChanged: (v) => _onPickerChanged(() => _payday = v),
           ),
+          const SizedBox(height: 10),
+          _HolidayWeekdaysField(
+            selected: _holidayWeekdays,
+            onToggle: _toggleHoliday,
+          ),
           if (!_isEditing) ...[
             const SizedBox(height: 20),
             FilledButton(onPressed: _submit, child: const Text('登録する')),
           ],
         ],
       ),
+    );
+  }
+}
+
+const _weekdayLabels = ['月', '火', '水', '木', '金', '土', '日'];
+
+/// Multi-select weekday chips for [Workplace.holidayWeekdays] (ISO weekday
+/// numbers, 1=Mon..7=Sun) — days the app should treat as off, skipping
+/// auto clock-in and daily work tracking.
+class _HolidayWeekdaysField extends StatelessWidget {
+  const _HolidayWeekdaysField({required this.selected, required this.onToggle});
+
+  final Set<int> selected;
+  final ValueChanged<int> onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('定休日', style: Theme.of(context).textTheme.bodyMedium),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (var i = 0; i < _weekdayLabels.length; i++)
+              FilterChip(
+                label: Text(_weekdayLabels[i]),
+                selected: selected.contains(i + 1),
+                onSelected: (_) => onToggle(i + 1),
+                selectedColor: scheme.primary.withValues(alpha: 0.16),
+                checkmarkColor: scheme.primary,
+              ),
+          ],
+        ),
+      ],
     );
   }
 }

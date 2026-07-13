@@ -20,4 +20,15 @@ class UserProfileRepository {
       SetOptions(merge: true),
     );
   }
+
+  /// Adds (or, with a negative [delta], removes) food earned from worked
+  /// hours — a plain increment rather than a full [update] so concurrent
+  /// writes to other profile fields aren't clobbered.
+  Future<void> addFood(String uid, int delta) async {
+    if (delta == 0) return;
+    await _doc(uid).set({
+      'totalFood': FieldValue.increment(delta),
+      'updatedAt': Timestamp.fromDate(DateTime.now()),
+    }, SetOptions(merge: true));
+  }
 }

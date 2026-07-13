@@ -9,6 +9,7 @@ import '../../widgets/notification_settings_form.dart';
 import '../../widgets/profile_form.dart';
 import '../../widgets/settings_ui.dart';
 import '../../widgets/workplace_form.dart';
+import '../dev/dog_design_preview_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -48,10 +49,52 @@ class SettingsScreen extends ConsumerWidget {
               data: (profile) => NotificationSettingsForm(profile: profile),
             ),
             const SizedBox(height: 16),
+            profileAsync.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, _) => Text('エラー: $e'),
+              data: (profile) => OvertimeSettingsForm(profile: profile),
+            ),
+            const SizedBox(height: 16),
             const _WidgetSyncSection(),
+            const SizedBox(height: 16),
+            const _LicenseCreditsSection(),
+            const SizedBox(height: 16),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.pets_outlined),
+                title: const Text('犬デザイン候補を見る（開発用）'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const DogDesignPreviewScreen()),
+                ),
+              ),
+            ),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Attribution for third-party assets used in the UI — currently just the
+/// dog emoji, which is CC-BY 4.0 (attribution required, unlike the Twemoji
+/// *library* code itself, which is MIT) rather than public domain.
+class _LicenseCreditsSection extends StatelessWidget {
+  const _LicenseCreditsSection();
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return SettingsSection(
+      icon: Icons.info_outline,
+      title: 'ライセンス表記',
+      children: [
+        Text(
+          '🐶 Dog emoji by Twemoji — licensed under CC-BY 4.0\n'
+          'https://creativecommons.org/licenses/by/4.0/',
+          style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+        ),
+      ],
     );
   }
 }
