@@ -15,6 +15,8 @@ import '../../util/pet_stage.dart';
 import '../../util/schedule_blocks.dart';
 import '../../widgets/dog_track.dart';
 import '../../widgets/time_field.dart';
+import 'home_design_b.dart';
+import 'home_design_c.dart';
 
 final _yenFormat = NumberFormat.currency(
   locale: 'ja_JP',
@@ -41,8 +43,21 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
+/// A/B design switcher for the home screen — temporary, for comparing the
+/// current design against in-progress redesigns before picking a winner.
+/// Remove once one design is settled on.
+enum _HomeDesign {
+  a('A'),
+  b('B'),
+  c('C');
+
+  const _HomeDesign(this.label);
+  final String label;
+}
+
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _autoClockInTriggered = false;
+  _HomeDesign _design = _HomeDesign.a;
 
   void _maybeAutoClockIn(Workplace workplace, List<TimeEntry> todayEntries) {
     if (_autoClockInTriggered || todayEntries.isNotEmpty) return;
@@ -56,6 +71,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ref
         .read(timeEntryRepositoryProvider)
         .autoClockIn(uid, workplace.id, scheduledStart, workplace.breakMinutes);
+    ref.read(userProfileRepositoryProvider).recordWorkedDay(uid, now);
   }
 
   Future<void> _editClockIn(TimeEntry entry, Workplace workplace) async {
@@ -219,24 +235,56 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Scaffold(
       body: SafeArea(
         bottom: false,
-        child: workplaceAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (e, _) => Center(child: Text('エラー: $e')),
-          data: (workplace) {
-            if (workplace == null) {
-              return const _NoWorkplaceMessage();
-            }
-            return _HomeContent(
-              workplace: workplace,
-              onAutoClockInCheck: _maybeAutoClockIn,
-              onEditClockIn: _editClockIn,
-              onEditBreakStart: _editBreakStart,
-              onClockOut: _clockOut,
-              onUndoClockOut: _undoClockOut,
-              onStartExtraBreak: _startExtraBreak,
-              onEndExtraBreak: _endExtraBreak,
-            );
-          },
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: workplaceAsync.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(child: Text('エラー: $e')),
+                data: (workplace) {
+                  if (workplace == null) {
+                    return const _NoWorkplaceMessage();
+                  }
+                  switch (_design) {
+                    case _HomeDesign.b:
+                      return HomeContentB(workplace: workplace);
+                    case _HomeDesign.c:
+                      return HomeContentC(workplace: workplace);
+                    case _HomeDesign.a:
+                      return _HomeContent(
+                        workplace: workplace,
+                        onAutoClockInCheck: _maybeAutoClockIn,
+                        onEditClockIn: _editClockIn,
+                        onEditBreakStart: _editBreakStart,
+                        onClockOut: _clockOut,
+                        onUndoClockOut: _undoClockOut,
+                        onStartExtraBreak: _startExtraBreak,
+                        onEndExtraBreak: _endExtraBreak,
+                      );
+                  }
+                },
+              ),
+            ),
+            // Floats above the content instead of pushing it down, so the
+            // real layout (whether everything fits on-screen) can be
+            // checked as-is. Temporary — comes out with the rest of the
+            // switcher once a design is settled on.
+            Positioned(
+              top: 8,
+              right: 16,
+              child: Material(
+                color: Colors.transparent,
+                child: SegmentedButton<_HomeDesign>(
+                  segments: [
+                    for (final d in _HomeDesign.values)
+                      ButtonSegment(value: d, label: Text(d.label)),
+                  ],
+                  selected: {_design},
+                  onSelectionChanged: (s) => setState(() => _design = s.first),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

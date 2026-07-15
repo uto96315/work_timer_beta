@@ -1,6 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 
 import '../models/user_profile.dart';
+import '../util/affection.dart';
+
+final _dateFormat = DateFormat('yyyy-MM-dd');
 
 class UserProfileRepository {
   UserProfileRepository(this._firestore);
@@ -28,6 +32,22 @@ class UserProfileRepository {
     if (delta == 0) return;
     await _doc(uid).set({
       'totalFood': FieldValue.increment(delta),
+      'updatedAt': Timestamp.fromDate(DateTime.now()),
+    }, SetOptions(merge: true));
+  }
+
+  /// Records that [day] was worked, for affection tracking (see
+  /// `util/affection.dart`) — gains a fixed amount of affection and marks
+  /// [day] as the most recent worked day.
+  ///
+  /// Callers are expected to only call this once per calendar day (the
+  /// only current call site, home_screen's auto clock-in, only fires once
+  /// a day itself), so this doesn't re-check [UserProfile.lastWorkedDate]
+  /// before writing.
+  Future<void> recordWorkedDay(String uid, DateTime day) async {
+    await _doc(uid).set({
+      'affectionPoints': FieldValue.increment(affectionGainPerDay),
+      'lastWorkedDate': _dateFormat.format(day),
       'updatedAt': Timestamp.fromDate(DateTime.now()),
     }, SetOptions(merge: true));
   }

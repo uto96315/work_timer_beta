@@ -24,17 +24,31 @@ abstract class UserProfile with _$UserProfile {
     @Default(true) bool notifyClockInReminder,
     @Default(true) bool notifyClockOutReminder,
     @Default(true) bool notifyPayday,
+
     /// When false (the default), live earnings/worked-time stop counting once
     /// the scheduled end time passes, and the user is prompted via
     /// notification/in-app banner to decide whether to record overtime.
     @Default(false) bool autoOvertimeEnabled,
+
     /// Only relevant when [autoOvertimeEnabled] is true: sends a reminder
     /// notification every N hours while overtime is ongoing. 0 means no
     /// reminder; otherwise one of 1/2/3.
     @Default(0) int overtimeReminderIntervalHours,
+
     /// Cumulative food earned from worked hours, used to grow the pet (see
     /// [lib/src/util/pet_stage.dart]).
     @Default(0) int totalFood,
+
+    /// Raw affection points, gained once per calendar day worked. Unlike
+    /// [totalFood] (a permanent milestone counter), the *displayed*
+    /// affection level decays when [lastWorkedDate] falls behind — see
+    /// [lib/src/util/affection.dart]. Not clamped at write time; clamped
+    /// when displayed instead.
+    @Default(0) int affectionPoints,
+
+    /// "yyyy-MM-dd" of the last day a shift was recorded, used to compute
+    /// affection decay since. Null means never worked yet.
+    String? lastWorkedDate,
     @NullableTimestampConverter() DateTime? updatedAt,
   }) = _UserProfile;
 

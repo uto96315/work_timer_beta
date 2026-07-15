@@ -22,6 +22,8 @@ _UserProfile _$UserProfileFromJson(Map<String, dynamic> json) => _UserProfile(
   overtimeReminderIntervalHours:
       (json['overtimeReminderIntervalHours'] as num?)?.toInt() ?? 0,
   totalFood: (json['totalFood'] as num?)?.toInt() ?? 0,
+  affectionPoints: (json['affectionPoints'] as num?)?.toInt() ?? 0,
+  lastWorkedDate: json['lastWorkedDate'] as String?,
   updatedAt: const NullableTimestampConverter().fromJson(json['updatedAt']),
 );
 
@@ -40,6 +42,8 @@ Map<String, dynamic> _$UserProfileToJson(
   'autoOvertimeEnabled': instance.autoOvertimeEnabled,
   'overtimeReminderIntervalHours': instance.overtimeReminderIntervalHours,
   'totalFood': instance.totalFood,
+  'affectionPoints': instance.affectionPoints,
+  'lastWorkedDate': instance.lastWorkedDate,
   'updatedAt': const NullableTimestampConverter().toJson(instance.updatedAt),
 };
 
