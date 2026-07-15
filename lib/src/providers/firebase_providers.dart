@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../repositories/monthly_payment_repository.dart';
 import '../repositories/time_entry_repository.dart';
 import '../repositories/user_profile_repository.dart';
 import '../repositories/workplace_repository.dart';
@@ -38,3 +39,7 @@ TimeEntryRepository timeEntryRepository(Ref ref) =>
 @Riverpod(keepAlive: true)
 UserProfileRepository userProfileRepository(Ref ref) =>
     UserProfileRepository(ref.watch(firestoreProvider));
+
+@Riverpod(keepAlive: true)
+MonthlyPaymentRepository monthlyPaymentRepository(Ref ref) =>
+    MonthlyPaymentRepository(ref.watch(firestoreProvider));

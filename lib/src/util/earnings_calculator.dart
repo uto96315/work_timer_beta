@@ -1,3 +1,4 @@
+import '../models/salary_type.dart';
 import '../models/time_entry.dart';
 import '../models/workplace.dart';
 
@@ -115,4 +116,42 @@ EarningsTotals sumEarnings({
     overtimeSeconds += result.overtimeSeconds;
   }
   return EarningsTotals(totalYen: totalYen, overtimeSeconds: overtimeSeconds);
+}
+
+/// The legally-correct base hourly rate for unpaid-overtime purposes:
+/// base monthly salary (excluding any fixed overtime allowance) divided by
+/// contracted (non-overtime) monthly hours.
+///
+/// Deliberately distinct from [Workplace.hourlyWage], which for monthly
+/// salaries is a blended average (including the fixed overtime allowance)
+/// used only for the motivational live counter. Mixing the two would water
+/// down the base rate and understate any unpaid overtime — see docs/ISSUES.md.
+/// Returns null for hourly workplaces or incomplete monthly setup.
+double? baseHourlyWage(Workplace workplace) {
+  if (workplace.salaryType != SalaryType.monthly) return null;
+  final base = workplace.baseMonthlySalary;
+  final hours = workplace.standardMonthlyHours;
+  if (base == null || hours == null || hours <= 0) return null;
+  return base / hours;
+}
+
+/// Unpaid overtime pay for a monthly-salary workplace, given the total
+/// overtime already worked in the current pay period (e.g. [monthTotals]
+/// from [sumEarnings]). Overtime up to [Workplace.fixedOvertimeHours] is
+/// already covered by the fixed overtime allowance; only the excess is
+/// unpaid.
+///
+/// Returns 0 for hourly workplaces, or if no overtime exceeds the fixed
+/// allowance.
+double unpaidOvertimeYen({
+  required Workplace workplace,
+  required int periodOvertimeSeconds,
+}) {
+  final rate = baseHourlyWage(workplace);
+  if (rate == null) return 0;
+  final fixedSeconds = ((workplace.fixedOvertimeHours ?? 0) * 3600).round();
+  final excessSeconds = periodOvertimeSeconds - fixedSeconds;
+  if (excessSeconds <= 0) return 0;
+  final overtimeRate = rate * (1 + workplace.overtimeRatePercent / 100);
+  return overtimeRate * excessSeconds / 3600;
 }

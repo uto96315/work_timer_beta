@@ -4,6 +4,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import '../util/firestore_converters.dart';
 import 'employment_type.dart';
 import 'industry.dart';
+import 'salary_type.dart';
 
 part 'workplace.freezed.dart';
 part 'workplace.g.dart';
@@ -21,8 +22,33 @@ abstract class Workplace with _$Workplace {
     /// jobs elsewhere.
     Industry? industry,
     EmploymentType? employmentType,
-    /// Base hourly wage in yen.
+    /// Whether pay is hourly or a fixed monthly salary.
+    @Default(SalaryType.hourly) SalaryType salaryType,
+    /// Effective hourly wage in yen, used for the live earnings counter.
+    ///
+    /// For [SalaryType.monthly] this is derived (not user-entered) from
+    /// [baseMonthlySalary] and the other monthly fields below — see
+    /// `WorkplaceForm._monthlyEffectiveHourlyWage`. It exists so the rest of
+    /// the app (earnings ticking, widget sync) doesn't need to know about
+    /// salary type at all.
     required int hourlyWage,
+    /// Base monthly salary in yen, excluding any fixed overtime allowance.
+    /// Used with [standardMonthlyHours] to derive the legally-correct base
+    /// hourly rate for unpaid-overtime calculations. Only set when
+    /// [salaryType] is [SalaryType.monthly].
+    int? baseMonthlySalary,
+    /// Fixed/deemed overtime allowance already included in pay each month,
+    /// covering [fixedOvertimeHours] of overtime in advance. Zero or null
+    /// means no fixed overtime allowance.
+    int? fixedOvertimeAllowance,
+    /// Overtime hours already covered by [fixedOvertimeAllowance]. Overtime
+    /// beyond this in a given month is unpaid unless the employer pays for
+    /// it separately.
+    double? fixedOvertimeHours,
+    /// Average contracted (non-overtime) working hours per month, used as
+    /// the denominator for the base hourly rate. Typically 160-175 for a
+    /// full-time 5-day week.
+    double? standardMonthlyHours,
     /// Scheduled start time, "HH:mm" (24h, local time).
     required String startTime,
     /// Scheduled end time ("teiji"), "HH:mm" (24h, local time).

@@ -13,7 +13,14 @@ _Workplace _$WorkplaceFromJson(Map<String, dynamic> json) => _Workplace(
     _$EmploymentTypeEnumMap,
     json['employmentType'],
   ),
+  salaryType:
+      $enumDecodeNullable(_$SalaryTypeEnumMap, json['salaryType']) ??
+      SalaryType.hourly,
   hourlyWage: (json['hourlyWage'] as num).toInt(),
+  baseMonthlySalary: (json['baseMonthlySalary'] as num?)?.toInt(),
+  fixedOvertimeAllowance: (json['fixedOvertimeAllowance'] as num?)?.toInt(),
+  fixedOvertimeHours: (json['fixedOvertimeHours'] as num?)?.toDouble(),
+  standardMonthlyHours: (json['standardMonthlyHours'] as num?)?.toDouble(),
   startTime: json['startTime'] as String,
   endTime: json['endTime'] as String,
   breakMinutes: (json['breakMinutes'] as num).toInt(),
@@ -35,7 +42,12 @@ Map<String, dynamic> _$WorkplaceToJson(
   'id': instance.id,
   'industry': _$IndustryEnumMap[instance.industry],
   'employmentType': _$EmploymentTypeEnumMap[instance.employmentType],
+  'salaryType': _$SalaryTypeEnumMap[instance.salaryType]!,
   'hourlyWage': instance.hourlyWage,
+  'baseMonthlySalary': instance.baseMonthlySalary,
+  'fixedOvertimeAllowance': instance.fixedOvertimeAllowance,
+  'fixedOvertimeHours': instance.fixedOvertimeHours,
+  'standardMonthlyHours': instance.standardMonthlyHours,
   'startTime': instance.startTime,
   'endTime': instance.endTime,
   'breakMinutes': instance.breakMinutes,
@@ -72,4 +84,9 @@ const _$EmploymentTypeEnumMap = {
   EmploymentType.contract: 'contract',
   EmploymentType.temporary: 'temporary',
   EmploymentType.other: 'other',
+};
+
+const _$SalaryTypeEnumMap = {
+  SalaryType.hourly: 'hourly',
+  SalaryType.monthly: 'monthly',
 };

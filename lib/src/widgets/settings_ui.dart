@@ -188,7 +188,7 @@ class SettingsAmountField extends StatelessWidget {
                   child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
                 ),
                 SizedBox(
-                  width: 96,
+                  width: 130,
                   child: TextFormField(
                     controller: controller,
                     focusNode: focusNode,

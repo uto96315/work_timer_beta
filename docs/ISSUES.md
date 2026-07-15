@@ -12,6 +12,25 @@
 
 - [ ] 早出したときの扱いをどうするか検討（時給換算・カウンター表示への反映方法）
 - [ ] エクストラブレイク（一時休憩）との整合性の再確認
+- [x] 月給制（正社員）対応：時給前提の計算モデルを拡張する
+
+  **実装した設計：表（モチベ用）と裏（未払い判定用）で別の時給を使う2階建て**
+
+  - `SalaryType`（`lib/src/models/salary_type.dart`）を追加し、`Workplace.salaryType`で時給制/月給制を切り替え
+  - **表**：`Workplace.hourlyWage`（既存フィールドをそのまま流用）＝月給制の場合は`WorkplaceForm._monthlyEffectiveHourlyWage()`が「(基本給+固定残業手当)÷(所定労働時間+見込み残業時間)」で自動算出してフォーム保存時に書き込む。既存のカウンター表示・ウィジェット同期（`widget_sync_service.dart`／iOS `WorkTimerWidget.swift`）は無改修で動く
+  - **裏**：`earnings_calculator.dart`に`baseHourlyWage()`（基本給÷所定内労働時間、見込み残業時間は含めない）と`unpaidOvertimeYen()`（当月残業が見込み時間を超えた分だけ割増計算）を追加
+  - `Workplace`に`baseMonthlySalary`／`fixedOvertimeAllowance`／`fixedOvertimeHours`／`standardMonthlyHours`を追加（すべてnullable、時給制では未使用）
+  - `workplace_form.dart`：給与形態ピッカー＋月給制用の入力欄（基本給・月平均所定労働時間・固定残業手当・見込み残業時間）と、実質時給のリアルタイムプレビューを追加
+  - `home_screen.dart`：月給制ワークプレイスの場合、「見込み残業を超えた分（未払いの可能性）」カードを追加（`monthTotals.overtimeSeconds`を既存の36協定警告と共用）
+
+  **未対応（follow-up）**：
+  - オンボーディング初回登録時の月給制フィールドの見せ方（現状`workplace_form.dart`にそのまま出るが、UXの調整余地あり）
+  - 給料日サイクルでの月次集計（現状は暦月＝`monthStart`〜`monthEnd`で計算、`Workplace.payday`基準の期間には未対応）
+  - Firestoreスキーマの実データでの動作確認（テストディレクトリに単体テストなし）
+
+## ホーム画面表示
+
+- [ ] 「給料日まであと◯日！」をホーム画面に表示する（`Workplace.payday`は既にあるが未活用）
 
 ## ウィジェット
 
@@ -30,7 +49,13 @@
 
 ## 未払い額の可視化・請求支援
 
-- [ ] 実際の支給額入力から未払い額を試算する機能
+- [x] 実際の支給額入力から未払い額を試算する機能（記録画面）
+  - `MonthlyPayment`モデル（既存だが未使用だった）を使い、`monthly_payment_repository.dart`／`monthly_payment_providers.dart`を新設
+  - `records_screen.dart`：月ごとに想定給与（`sumEarnings()`で実際の打刻データから積算、Home画面の「今月」と同じロジック）・実際の受取額（ユーザー入力、手取り/総支給を選択）・差額（未払いの可能性）を表示。想定vs実際の月次バーチャート（`monthly_pay_chart.dart`）も追加
+  - 表示範囲は勤務先の登録月（`Workplace.createdAt`）から現在月まで（最大12ヶ月）。登録前の月は表示しない
+  - 月ごとの記録一覧・打刻修正画面（`month_entries_screen.dart`）も追加。「記録を修正」から出退勤時刻を修正可能、修正すると既存の`isModified`フラグで「修正済み」バッジ表示
+  - **未対応（follow-up）**：証拠画像添付（本人も「難しそう」と認識、要検討）、給料日サイクル基準の集計（現状は暦月）
+- [ ] `month_entries_screen.dart`の記録修正で休憩時間（`breakMinutes`）を編集できない（出退勤時刻のみ）。休憩を考慮した給与計算のためには修正できるようにすべき
 - [ ] 証拠として使えるログ（GPS・タイムスタンプ）の暗号化保存の実装方針
 - [ ] 打刻証明書（公式PDFレポート）の出力機能
 

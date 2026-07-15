@@ -287,3 +287,51 @@ final class UserProfileRepositoryProvider
 
 String _$userProfileRepositoryHash() =>
     r'0e38b3fc3642cc05fe71b31dd97397b46c688fba';
+
+@ProviderFor(monthlyPaymentRepository)
+final monthlyPaymentRepositoryProvider = MonthlyPaymentRepositoryProvider._();
+
+final class MonthlyPaymentRepositoryProvider
+    extends
+        $FunctionalProvider<
+          MonthlyPaymentRepository,
+          MonthlyPaymentRepository,
+          MonthlyPaymentRepository
+        >
+    with $Provider<MonthlyPaymentRepository> {
+  MonthlyPaymentRepositoryProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'monthlyPaymentRepositoryProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$monthlyPaymentRepositoryHash();
+
+  @$internal
+  @override
+  $ProviderElement<MonthlyPaymentRepository> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  MonthlyPaymentRepository create(Ref ref) {
+    return monthlyPaymentRepository(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(MonthlyPaymentRepository value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<MonthlyPaymentRepository>(value),
+    );
+  }
+}
+
+String _$monthlyPaymentRepositoryHash() =>
+    r'48f262be7720da577db78ecd829edbaee343e060';

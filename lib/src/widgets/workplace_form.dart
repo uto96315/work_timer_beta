@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/employment_type.dart';
 import '../models/industry.dart';
+import '../models/salary_type.dart';
 import '../models/workplace.dart';
 import '../providers/auth_providers.dart';
 import '../providers/firebase_providers.dart';
@@ -42,14 +43,23 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
   late final TextEditingController _wageController;
   late final TextEditingController _breakController;
   late final TextEditingController _overtimeController;
+  late final TextEditingController _baseSalaryController;
+  late final TextEditingController _fixedOvertimeAllowanceController;
+  late final TextEditingController _fixedOvertimeHoursController;
+  late final TextEditingController _standardMonthlyHoursController;
   late final FocusNode _wageFocus;
   late final FocusNode _breakFocus;
   late final FocusNode _overtimeFocus;
+  late final FocusNode _baseSalaryFocus;
+  late final FocusNode _fixedOvertimeAllowanceFocus;
+  late final FocusNode _fixedOvertimeHoursFocus;
+  late final FocusNode _standardMonthlyHoursFocus;
   late TimeOfDay _startTime;
   late TimeOfDay _endTime;
   late TimeOfDay _breakStartTime;
   Industry? _industry;
   EmploymentType? _employmentType;
+  late SalaryType _salaryType;
   int? _payday;
   late Set<int> _holidayWeekdays;
 
@@ -63,17 +73,60 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
     _breakController = TextEditingController(text: w?.breakMinutes.toString() ?? '60');
     _overtimeController =
         TextEditingController(text: w?.overtimeRatePercent.toString() ?? '25');
+    _baseSalaryController =
+        TextEditingController(text: w?.baseMonthlySalary?.toString() ?? '');
+    _fixedOvertimeAllowanceController =
+        TextEditingController(text: w?.fixedOvertimeAllowance?.toString() ?? '0');
+    _fixedOvertimeHoursController =
+        TextEditingController(text: w?.fixedOvertimeHours?.toString() ?? '0');
+    _standardMonthlyHoursController =
+        TextEditingController(text: w?.standardMonthlyHours?.toString() ?? '');
     _startTime = _parseTime(w?.startTime) ?? const TimeOfDay(hour: 9, minute: 0);
     _endTime = _parseTime(w?.endTime) ?? const TimeOfDay(hour: 18, minute: 0);
     _breakStartTime = _parseTime(w?.breakStartTime) ?? const TimeOfDay(hour: 12, minute: 0);
     _industry = w?.industry;
     _employmentType = w?.employmentType;
+    _salaryType = w?.salaryType ?? SalaryType.hourly;
     _payday = w?.payday;
     _holidayWeekdays = {...(w?.holidayWeekdays ?? const [])};
 
     _wageFocus = FocusNode()..addListener(() => _onFocusChange(_wageFocus));
     _breakFocus = FocusNode()..addListener(() => _onFocusChange(_breakFocus));
     _overtimeFocus = FocusNode()..addListener(() => _onFocusChange(_overtimeFocus));
+    _baseSalaryFocus = FocusNode()..addListener(() => _onFocusChange(_baseSalaryFocus));
+    _fixedOvertimeAllowanceFocus =
+        FocusNode()..addListener(() => _onFocusChange(_fixedOvertimeAllowanceFocus));
+    _fixedOvertimeHoursFocus =
+        FocusNode()..addListener(() => _onFocusChange(_fixedOvertimeHoursFocus));
+    _standardMonthlyHoursFocus =
+        FocusNode()..addListener(() => _onFocusChange(_standardMonthlyHoursFocus));
+
+    // Live-updates the derived hourly-wage preview as any monthly field
+    // changes, without waiting for the field to lose focus (autosave).
+    for (final c in [
+      _baseSalaryController,
+      _fixedOvertimeAllowanceController,
+      _fixedOvertimeHoursController,
+      _standardMonthlyHoursController,
+    ]) {
+      c.addListener(() => setState(() {}));
+    }
+  }
+
+  /// Blended average hourly rate for the live counter: total monthly pay
+  /// (base + fixed overtime allowance) spread over total expected hours
+  /// (contracted + fixed overtime). Deliberately not the legally-correct
+  /// base rate used for unpaid-overtime calculations — see
+  /// `earnings_calculator.dart`'s `baseHourlyWage`.
+  int? _monthlyEffectiveHourlyWage() {
+    final base = int.tryParse(_baseSalaryController.text);
+    final standardHours = double.tryParse(_standardMonthlyHoursController.text);
+    if (base == null || standardHours == null || standardHours <= 0) return null;
+    final allowance = int.tryParse(_fixedOvertimeAllowanceController.text) ?? 0;
+    final fixedHours = double.tryParse(_fixedOvertimeHoursController.text) ?? 0;
+    final totalHours = standardHours + fixedHours;
+    if (totalHours <= 0) return null;
+    return ((base + allowance) / totalHours).round();
   }
 
   void _onFocusChange(FocusNode node) {
@@ -94,9 +147,17 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
     _wageController.dispose();
     _breakController.dispose();
     _overtimeController.dispose();
+    _baseSalaryController.dispose();
+    _fixedOvertimeAllowanceController.dispose();
+    _fixedOvertimeHoursController.dispose();
+    _standardMonthlyHoursController.dispose();
     _wageFocus.dispose();
     _breakFocus.dispose();
     _overtimeFocus.dispose();
+    _baseSalaryFocus.dispose();
+    _fixedOvertimeAllowanceFocus.dispose();
+    _fixedOvertimeHoursFocus.dispose();
+    _standardMonthlyHoursFocus.dispose();
     super.dispose();
   }
 
@@ -115,6 +176,25 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
     if (mounted) widget.onSaved?.call();
   }
 
+  bool get _isMonthly => _salaryType == SalaryType.monthly;
+
+  /// For monthly salaries this is derived, not user-entered — see
+  /// [_monthlyEffectiveHourlyWage].
+  int _resolvedHourlyWage() =>
+      _isMonthly ? (_monthlyEffectiveHourlyWage() ?? 0) : int.parse(_wageController.text);
+
+  int? get _resolvedBaseMonthlySalary =>
+      _isMonthly ? int.tryParse(_baseSalaryController.text) : null;
+
+  int? get _resolvedFixedOvertimeAllowance =>
+      _isMonthly ? (int.tryParse(_fixedOvertimeAllowanceController.text) ?? 0) : null;
+
+  double? get _resolvedFixedOvertimeHours =>
+      _isMonthly ? (double.tryParse(_fixedOvertimeHoursController.text) ?? 0) : null;
+
+  double? get _resolvedStandardMonthlyHours =>
+      _isMonthly ? double.tryParse(_standardMonthlyHoursController.text) : null;
+
   Future<void> _persist() async {
     final uid = ref.read(currentUidProvider);
     if (uid == null) return;
@@ -128,7 +208,12 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
           id: '',
           industry: _industry,
           employmentType: _employmentType,
-          hourlyWage: int.parse(_wageController.text),
+          salaryType: _salaryType,
+          hourlyWage: _resolvedHourlyWage(),
+          baseMonthlySalary: _resolvedBaseMonthlySalary,
+          fixedOvertimeAllowance: _resolvedFixedOvertimeAllowance,
+          fixedOvertimeHours: _resolvedFixedOvertimeHours,
+          standardMonthlyHours: _resolvedStandardMonthlyHours,
           startTime: _formatTime(_startTime),
           endTime: _formatTime(_endTime),
           breakMinutes: int.parse(_breakController.text),
@@ -145,7 +230,12 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
         existing.copyWith(
           industry: _industry,
           employmentType: _employmentType,
-          hourlyWage: int.parse(_wageController.text),
+          salaryType: _salaryType,
+          hourlyWage: _resolvedHourlyWage(),
+          baseMonthlySalary: _resolvedBaseMonthlySalary,
+          fixedOvertimeAllowance: _resolvedFixedOvertimeAllowance,
+          fixedOvertimeHours: _resolvedFixedOvertimeHours,
+          standardMonthlyHours: _resolvedStandardMonthlyHours,
           startTime: _formatTime(_startTime),
           endTime: _formatTime(_endTime),
           breakMinutes: int.parse(_breakController.text),
@@ -174,6 +264,66 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
     if (_isEditing) _autoSave();
   }
 
+  List<Widget> _buildMonthlySalaryFields() {
+    final effectiveWage = _monthlyEffectiveHourlyWage();
+    return [
+      SettingsAmountField(
+        label: '基本給',
+        controller: _baseSalaryController,
+        focusNode: _baseSalaryFocus,
+        suffixText: '円',
+        keyboardType: TextInputType.number,
+        textInputAction: TextInputAction.done,
+        validator: (v) => (v == null || int.tryParse(v) == null) ? '数値を入力してください' : null,
+        helperText:
+            '固定残業手当を除いた月額。通勤手当・住宅手当なども除く。'
+            '給与明細に固定残業代の内訳が書かれていない場合は、月給の全額をここに入力してください',
+      ),
+      const SizedBox(height: 10),
+      SettingsAmountField(
+        label: '月平均所定労働時間',
+        controller: _standardMonthlyHoursController,
+        focusNode: _standardMonthlyHoursFocus,
+        suffixText: '時間',
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        textInputAction: TextInputAction.done,
+        validator: (v) =>
+            (v == null || double.tryParse(v) == null || double.parse(v) <= 0)
+            ? '数値を入力してください'
+            : null,
+        helperText: '残業を含まない、契約上の月間労働時間。目安は160〜173時間',
+      ),
+      const SizedBox(height: 10),
+      SettingsAmountField(
+        label: '固定残業手当',
+        controller: _fixedOvertimeAllowanceController,
+        focusNode: _fixedOvertimeAllowanceFocus,
+        suffixText: '円',
+        keyboardType: TextInputType.number,
+        textInputAction: TextInputAction.done,
+        validator: (v) => (v == null || int.tryParse(v) == null) ? '数値を入力してください' : null,
+        helperText: 'みなし残業代・固定残業代がなければ0円',
+      ),
+      const SizedBox(height: 10),
+      SettingsAmountField(
+        label: '見込み残業時間',
+        controller: _fixedOvertimeHoursController,
+        focusNode: _fixedOvertimeHoursFocus,
+        suffixText: '時間',
+        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+        textInputAction: TextInputAction.done,
+        validator: (v) => (v == null || double.tryParse(v) == null) ? '数値を入力してください' : null,
+        helperText: '固定残業手当に含まれる残業時間。これを超えた分が未払いの可能性ありとして計算されます',
+      ),
+      const SizedBox(height: 10),
+      _ReadOnlyValueRow(
+        label: '実質時給（表示用）',
+        value: effectiveWage == null ? '—' : '¥$effectiveWage',
+      ),
+      const SizedBox(height: 10),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     return Form(
@@ -200,16 +350,27 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
             ),
             const SizedBox(height: 10),
           ],
-          SettingsAmountField(
-            label: '時給',
-            controller: _wageController,
-            focusNode: _wageFocus,
-            suffixText: '円',
-            keyboardType: TextInputType.number,
-            textInputAction: TextInputAction.done,
-            validator: (v) => (v == null || int.tryParse(v) == null) ? '数値を入力してください' : null,
+          SettingsPickerRow<SalaryType>(
+            label: '給与形態',
+            value: _salaryType,
+            options: SalaryType.values,
+            labelOf: (v) => v.label,
+            onChanged: (v) => _onPickerChanged(() => _salaryType = v),
           ),
           const SizedBox(height: 10),
+          if (_isMonthly) ..._buildMonthlySalaryFields() else ...[
+            SettingsAmountField(
+              label: '時給',
+              controller: _wageController,
+              focusNode: _wageFocus,
+              suffixText: '円',
+              keyboardType: TextInputType.number,
+              textInputAction: TextInputAction.done,
+              validator: (v) =>
+                  (v == null || int.tryParse(v) == null) ? '数値を入力してください' : null,
+            ),
+            const SizedBox(height: 10),
+          ],
           TimeField(
             label: '始業時刻',
             icon: Icons.wb_sunny_outlined,
@@ -268,6 +429,42 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
             const SizedBox(height: 20),
             FilledButton(onPressed: _submit, child: const Text('登録する')),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+/// A non-interactive row matching [SettingsPickerRow]'s look, for showing a
+/// derived value (e.g. the monthly-salary effective hourly wage) that the
+/// user can't edit directly.
+class _ReadOnlyValueRow extends StatelessWidget {
+  const _ReadOnlyValueRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
+          ),
+          Text(
+            value,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: scheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );

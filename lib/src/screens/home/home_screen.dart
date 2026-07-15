@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../models/salary_type.dart';
 import '../../models/time_entry.dart';
 import '../../models/workplace.dart';
 import '../../providers/auth_providers.dart';
@@ -443,6 +444,26 @@ class _HomeContent extends ConsumerWidget {
               accentColor: overtimeAccentColor,
               caption: overtimeCaption,
             ),
+            if (workplace.salaryType == SalaryType.monthly) ...[
+              const SizedBox(height: 12),
+              Builder(
+                builder: (context) {
+                  final unpaidYen = unpaidOvertimeYen(
+                    workplace: workplace,
+                    periodOvertimeSeconds: monthTotals.overtimeSeconds,
+                  );
+                  return _StatTile(
+                    label: '見込み残業を超えた分（未払いの可能性）',
+                    value: _yenFormat.format(unpaidYen),
+                    icon: unpaidYen > 0 ? Icons.warning_amber_rounded : null,
+                    accentColor: unpaidYen > 0 ? Colors.orange.shade800 : null,
+                    caption: unpaidYen > 0
+                        ? '固定残業手当を超えて働いた分は別途支払われるべきです'
+                        : null,
+                  );
+                },
+              ),
+            ],
           ],
         );
       },
