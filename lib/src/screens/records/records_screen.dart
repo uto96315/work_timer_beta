@@ -14,7 +14,11 @@ import '../../widgets/monthly_pay_chart.dart';
 import '../../widgets/settings_ui.dart';
 import 'month_entries_screen.dart';
 
-final _yenFormat = NumberFormat.currency(locale: 'ja_JP', symbol: '¥', decimalDigits: 0);
+final _yenFormat = NumberFormat.currency(
+  locale: 'ja_JP',
+  symbol: '¥',
+  decimalDigits: 0,
+);
 final _monthKeyFormat = DateFormat('yyyy-MM');
 final _monthLabelFormat = DateFormat('M月');
 final _monthTitleFormat = DateFormat('yyyy年M月');
@@ -29,13 +33,20 @@ const _maxMonthsShown = 12;
 List<DateTime> _recordedMonthStarts(Workplace workplace) {
   final now = DateTime.now();
   final thisMonth = DateTime(now.year, now.month, 1);
-  final createdMonth = DateTime(workplace.createdAt.year, workplace.createdAt.month, 1);
+  final createdMonth = DateTime(
+    workplace.createdAt.year,
+    workplace.createdAt.month,
+    1,
+  );
   final monthsSinceStart =
-      (thisMonth.year - createdMonth.year) * 12 + (thisMonth.month - createdMonth.month) + 1;
+      (thisMonth.year - createdMonth.year) * 12 +
+      (thisMonth.month - createdMonth.month) +
+      1;
   final count = monthsSinceStart.clamp(1, _maxMonthsShown);
-  return List.generate(count, (i) => DateTime(thisMonth.year, thisMonth.month - i, 1))
-      .reversed
-      .toList();
+  return List.generate(
+    count,
+    (i) => DateTime(thisMonth.year, thisMonth.month - i, 1),
+  ).reversed.toList();
 }
 
 class RecordsScreen extends ConsumerWidget {
@@ -81,12 +92,17 @@ class _RecordsContent extends ConsumerWidget {
     for (final monthStart in monthStarts) {
       final monthEnd = DateTime(monthStart.year, monthStart.month + 1, 1);
       final entries =
-          ref.watch(entriesInRangeProvider(monthStart, monthEnd)).value ?? const [];
+          ref.watch(entriesInRangeProvider(monthStart, monthEnd)).value ??
+          const [];
       final calcNow = now.isBefore(monthEnd) ? now : monthEnd;
       // What the accumulated clock-in/out data adds up to so far this month
       // — not the configured salary, which stays flat regardless of
       // attendance and would misrepresent a partly-worked month.
-      final totals = sumEarnings(workplace: workplace, entries: entries, now: calcNow);
+      final totals = sumEarnings(
+        workplace: workplace,
+        entries: entries,
+        now: calcNow,
+      );
       final monthKey = _monthKeyFormat.format(monthStart);
       rows.add(
         _MonthRow(
@@ -99,31 +115,39 @@ class _RecordsContent extends ConsumerWidget {
       );
     }
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
-      children: [
-        Card(
-          margin: EdgeInsets.zero,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: MonthlyPayChart(
-              points: [
-                for (final r in rows)
-                  MonthlyPayPoint(
-                    label: _monthLabelFormat.format(r.monthStart),
-                    expectedYen: r.expectedYen,
-                    actualYen: r.payment?.receivedAmount.toDouble(),
-                  ),
-              ],
+    return RefreshIndicator(
+      onRefresh: () async {
+        ref.invalidate(primaryWorkplaceProvider);
+        ref.invalidate(entriesInRangeProvider);
+        ref.invalidate(monthlyPaymentsProvider);
+      },
+      child: ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
+        children: [
+          Card(
+            margin: EdgeInsets.zero,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: MonthlyPayChart(
+                points: [
+                  for (final r in rows)
+                    MonthlyPayPoint(
+                      label: _monthLabelFormat.format(r.monthStart),
+                      expectedYen: r.expectedYen,
+                      actualYen: r.payment?.receivedAmount.toDouble(),
+                    ),
+                ],
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 16),
-        for (final row in rows.reversed) ...[
-          _MonthCard(workplace: workplace, row: row),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
+          for (final row in rows.reversed) ...[
+            _MonthCard(workplace: workplace, row: row),
+            const SizedBox(height: 12),
+          ],
         ],
-      ],
+      ),
     );
   }
 }
@@ -163,17 +187,23 @@ class _MonthCard extends ConsumerWidget {
     if (result == null) return;
     final uid = ref.read(currentUidProvider);
     if (uid == null) return;
-    await ref.read(monthlyPaymentRepositoryProvider).upsert(
-      uid,
-      workplace.id,
-      MonthlyPayment(
-        id: row.monthKey,
-        workplaceId: workplace.id,
-        receivedAmount: result.amount,
-        amountType: result.amountType,
-        createdAt: DateTime.now(),
-      ),
-    );
+    await ref
+        .read(monthlyPaymentRepositoryProvider)
+        .upsert(
+          uid,
+          workplace.id,
+          MonthlyPayment(
+            id: row.monthKey,
+            workplaceId: workplace.id,
+            receivedAmount: result.amount,
+            amountType: result.amountType,
+            createdAt: DateTime.now(),
+          ),
+        );
+    // Firestore's snapshot listener should pick this up on its own, but
+    // force a fresh read so the entered amount shows immediately rather
+    // than waiting for the next natural rebuild.
+    ref.invalidate(monthlyPaymentsProvider);
   }
 
   @override
@@ -191,13 +221,18 @@ class _MonthCard extends ConsumerWidget {
         Row(
           children: [
             Expanded(
-              child: _InfoLine(label: '残業時間', value: '$overtimeHours時間$overtimeMinutes分'),
+              child: _InfoLine(
+                label: '残業時間',
+                value: '$overtimeHours時間$overtimeMinutes分',
+              ),
             ),
             TextButton(
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (_) =>
-                      MonthEntriesScreen(workplace: workplace, monthStart: row.monthStart),
+                  builder: (_) => MonthEntriesScreen(
+                    workplace: workplace,
+                    monthStart: row.monthStart,
+                  ),
                 ),
               ),
               child: const Text('記録を修正'),
@@ -237,7 +272,11 @@ class _MonthCard extends ConsumerWidget {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.warning_amber_rounded, size: 16, color: Colors.orange.shade800),
+                  Icon(
+                    Icons.warning_amber_rounded,
+                    size: 16,
+                    color: Colors.orange.shade800,
+                  ),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
@@ -270,7 +309,9 @@ class _InfoLine extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return Row(
       children: [
-        Expanded(child: Text(label, style: Theme.of(context).textTheme.bodyMedium)),
+        Expanded(
+          child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
+        ),
         Text(
           value,
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -320,7 +361,9 @@ class _PaymentEditSheetState extends State<_PaymentEditSheet> {
   void _submit() {
     final amount = int.tryParse(_controller.text);
     if (amount == null) return;
-    Navigator.of(context).pop(_PaymentInput(amount: amount, amountType: _amountType));
+    Navigator.of(
+      context,
+    ).pop(_PaymentInput(amount: amount, amountType: _amountType));
   }
 
   @override
@@ -338,7 +381,9 @@ class _PaymentEditSheetState extends State<_PaymentEditSheet> {
         children: [
           Text(
             '${_monthTitleFormat.format(widget.row.monthStart)}の受取額',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
           TextField(

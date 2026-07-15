@@ -121,7 +121,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       pickedEnd.minute,
     );
     final isDefaultEnd =
-        pickedEnd.hour == defaultEnd.hour && pickedEnd.minute == defaultEnd.minute;
+        pickedEnd.hour == defaultEnd.hour &&
+        pickedEnd.minute == defaultEnd.minute;
     await ref
         .read(timeEntryRepositoryProvider)
         .setScheduledEnd(
@@ -298,9 +299,11 @@ class _HomeContent extends ConsumerWidget {
         final overtimeApprovedIds = ref.watch(overtimeApprovalProvider);
 
         final scheduledEnd =
-            todayEntry?.scheduledEndOverride ?? _timeToday(today, workplace.endTime);
+            todayEntry?.scheduledEndOverride ??
+            _timeToday(today, workplace.endTime);
         final untilEnd = scheduledEnd.difference(now);
-        final isPastScheduledEnd = activeEntry != null && now.isAfter(scheduledEnd);
+        final isPastScheduledEnd =
+            activeEntry != null && now.isAfter(scheduledEnd);
         final overtimeApproved =
             activeEntry != null && overtimeApprovedIds.contains(activeEntry.id);
         // Freezes the live count at the scheduled end instead of racking up
@@ -362,109 +365,120 @@ class _HomeContent extends ConsumerWidget {
             ? '36協定の上限目安（月45時間）に近づいています'
             : null;
 
-        return ListView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
-          children: [
-            const _Greeting(),
-            const SizedBox(height: 10),
-            if (isRestDay)
-              const _HolidayRestCard()
-            else ...[
-              _EarningsHeroCard(
-                totalYen: todayTotals.totalYen,
-                isOvertime: todayTotals.overtimeSeconds > 0,
-                untilEnd: untilEnd,
-                isWorking: activeEntry != null,
-                hasFinishedToday:
-                    activeEntry == null && lastFinishedEntry != null,
-                scheduledStartLabel: workplace.startTime,
-                activeEntry: activeEntry,
-                onEditClockIn: activeEntry == null
-                    ? null
-                    : () => onEditClockIn(activeEntry, workplace),
-                onClockOut: activeEntry == null
-                    ? null
-                    : () => onClockOut(activeEntry, workplace),
-                onUndoClockOut: lastFinishedEntry == null
-                    ? null
-                    : () => onUndoClockOut(lastFinishedEntry!, workplace),
-              ),
-              if (shouldFreezeOvertime) ...[
+        return RefreshIndicator(
+          onRefresh: () async {
+            ref.invalidate(primaryWorkplaceProvider);
+            ref.invalidate(entriesForDateProvider);
+            ref.invalidate(entriesInRangeProvider);
+          },
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
+            children: [
+              const _Greeting(),
+              const SizedBox(height: 10),
+              if (isRestDay)
+                const _HolidayRestCard()
+              else ...[
+                _EarningsHeroCard(
+                  totalYen: todayTotals.totalYen,
+                  isOvertime: todayTotals.overtimeSeconds > 0,
+                  untilEnd: untilEnd,
+                  isWorking: activeEntry != null,
+                  hasFinishedToday:
+                      activeEntry == null && lastFinishedEntry != null,
+                  scheduledStartLabel: workplace.startTime,
+                  activeEntry: activeEntry,
+                  onEditClockIn: activeEntry == null
+                      ? null
+                      : () => onEditClockIn(activeEntry, workplace),
+                  onClockOut: activeEntry == null
+                      ? null
+                      : () => onClockOut(activeEntry, workplace),
+                  onUndoClockOut: lastFinishedEntry == null
+                      ? null
+                      : () => onUndoClockOut(lastFinishedEntry!, workplace),
+                ),
+                if (shouldFreezeOvertime) ...[
+                  const SizedBox(height: 10),
+                  _OvertimePromptCard(
+                    onApprove: () => ref
+                        .read(overtimeApprovalProvider.notifier)
+                        .approve(activeEntry.id),
+                    onClockOut: () => onClockOut(activeEntry, workplace),
+                  ),
+                ],
                 const SizedBox(height: 10),
-                _OvertimePromptCard(
-                  onApprove: () => ref
-                      .read(overtimeApprovalProvider.notifier)
-                      .approve(activeEntry.id),
-                  onClockOut: () => onClockOut(activeEntry, workplace),
+                DogTrack(
+                  blocks: blocks,
+                  onEditBreakStart: todayEntry == null
+                      ? null
+                      : () => onEditBreakStart(todayEntry, workplace, today),
+                  onStartExtraBreak: activeEntry == null
+                      ? null
+                      : () => onStartExtraBreak(activeEntry, workplace.id),
+                  onEndExtraBreak: activeEntry == null
+                      ? null
+                      : () => onEndExtraBreak(activeEntry, workplace.id),
+                  isOnExtraBreak:
+                      activeEntry != null &&
+                      activeEntry.extraBreaks.isNotEmpty &&
+                      activeEntry.extraBreaks.last.end == null,
                 ),
               ],
               const SizedBox(height: 10),
-              DogTrack(
-                blocks: blocks,
-                onEditBreakStart: todayEntry == null
-                    ? null
-                    : () => onEditBreakStart(todayEntry, workplace, today),
-                onStartExtraBreak: activeEntry == null
-                    ? null
-                    : () => onStartExtraBreak(activeEntry, workplace.id),
-                onEndExtraBreak: activeEntry == null
-                    ? null
-                    : () => onEndExtraBreak(activeEntry, workplace.id),
-                isOnExtraBreak: activeEntry != null &&
-                    activeEntry.extraBreaks.isNotEmpty &&
-                    activeEntry.extraBreaks.last.end == null,
+              _PetStatusCard(totalFood: totalFood),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: _StatTile(
+                      label: '今週',
+                      value: _yenFormat.format(weekTotals.totalYen),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _StatTile(
+                      label: '今月',
+                      value: _yenFormat.format(monthTotals.totalYen),
+                    ),
+                  ),
+                ],
               ),
-            ],
-            const SizedBox(height: 10),
-            _PetStatusCard(totalFood: totalFood),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _StatTile(
-                    label: '今週',
-                    value: _yenFormat.format(weekTotals.totalYen),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _StatTile(
-                    label: '今月',
-                    value: _yenFormat.format(monthTotals.totalYen),
-                  ),
+              const SizedBox(height: 12),
+              _StatTile(
+                label: '今月の残業',
+                value:
+                    '${monthTotals.overtimeSeconds ~/ 3600}時間${(monthTotals.overtimeSeconds % 3600) ~/ 60}分',
+                icon: null,
+                accentColor: overtimeAccentColor,
+                caption: overtimeCaption,
+              ),
+              if (workplace.salaryType == SalaryType.monthly) ...[
+                const SizedBox(height: 12),
+                Builder(
+                  builder: (context) {
+                    final unpaidYen = unpaidOvertimeYen(
+                      workplace: workplace,
+                      periodOvertimeSeconds: monthTotals.overtimeSeconds,
+                    );
+                    return _StatTile(
+                      label: '見込み残業を超えた分（未払いの可能性）',
+                      value: _yenFormat.format(unpaidYen),
+                      icon: unpaidYen > 0 ? Icons.warning_amber_rounded : null,
+                      accentColor: unpaidYen > 0
+                          ? Colors.orange.shade800
+                          : null,
+                      caption: unpaidYen > 0
+                          ? '固定残業手当を超えて働いた分は別途支払われるべきです'
+                          : null,
+                    );
+                  },
                 ),
               ],
-            ),
-            const SizedBox(height: 12),
-            _StatTile(
-              label: '今月の残業',
-              value:
-                  '${monthTotals.overtimeSeconds ~/ 3600}時間${(monthTotals.overtimeSeconds % 3600) ~/ 60}分',
-              icon: null,
-              accentColor: overtimeAccentColor,
-              caption: overtimeCaption,
-            ),
-            if (workplace.salaryType == SalaryType.monthly) ...[
-              const SizedBox(height: 12),
-              Builder(
-                builder: (context) {
-                  final unpaidYen = unpaidOvertimeYen(
-                    workplace: workplace,
-                    periodOvertimeSeconds: monthTotals.overtimeSeconds,
-                  );
-                  return _StatTile(
-                    label: '見込み残業を超えた分（未払いの可能性）',
-                    value: _yenFormat.format(unpaidYen),
-                    icon: unpaidYen > 0 ? Icons.warning_amber_rounded : null,
-                    accentColor: unpaidYen > 0 ? Colors.orange.shade800 : null,
-                    caption: unpaidYen > 0
-                        ? '固定残業手当を超えて働いた分は別途支払われるべきです'
-                        : null,
-                  );
-                },
-              ),
             ],
-          ],
+          ),
         );
       },
     );
@@ -714,17 +728,21 @@ class _PetStatusCard extends StatelessWidget {
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   Text(
-                    toNext == null
-                        ? '最終形態まで育った！'
-                        : '次の姿まで🦴あと$toNext個',
-                    style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant),
+                    toNext == null ? '最終形態まで育った！' : '次の姿まで🦴あと$toNext個',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: scheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),
             ),
             Text(
               '🦴 $totalFood',
-              style: TextStyle(fontWeight: FontWeight.bold, color: scheme.primary),
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: scheme.primary,
+              ),
             ),
           ],
         ),
@@ -840,7 +858,10 @@ class _HolidayRestCard extends StatelessWidget {
 /// live count has frozen at that point, and this asks whether to keep
 /// counting (for this shift only) or clock out now.
 class _OvertimePromptCard extends StatelessWidget {
-  const _OvertimePromptCard({required this.onApprove, required this.onClockOut});
+  const _OvertimePromptCard({
+    required this.onApprove,
+    required this.onClockOut,
+  });
 
   final VoidCallback onApprove;
   final VoidCallback onClockOut;

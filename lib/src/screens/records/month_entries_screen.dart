@@ -7,6 +7,7 @@ import '../../models/workplace.dart';
 import '../../providers/auth_providers.dart';
 import '../../providers/firebase_providers.dart';
 import '../../providers/time_entry_providers.dart';
+import '../../widgets/settings_ui.dart';
 import '../../widgets/time_field.dart';
 
 final _dayFormat = DateFormat('M/d(E)', 'ja_JP');
@@ -75,6 +76,7 @@ class _EntryCard extends ConsumerWidget {
       entry,
       newClockIn: result.clockIn,
       newClockOut: result.clockOut,
+      newBreakMinutes: result.breakMinutes,
     );
   }
 
@@ -124,7 +126,8 @@ class _EntryCard extends ConsumerWidget {
                   const SizedBox(height: 4),
                   Text(
                     '${_timeFormat.format(entry.clockIn)} 〜 '
-                    '${entry.clockOut == null ? '未退勤' : _timeFormat.format(entry.clockOut!)}',
+                    '${entry.clockOut == null ? '未退勤' : _timeFormat.format(entry.clockOut!)}'
+                    '（休憩${entry.breakMinutes}分）',
                     style: TextStyle(color: scheme.onSurfaceVariant),
                   ),
                 ],
@@ -143,9 +146,14 @@ class _EntryCard extends ConsumerWidget {
 }
 
 class _EntryEdit {
-  const _EntryEdit({required this.clockIn, required this.clockOut});
+  const _EntryEdit({
+    required this.clockIn,
+    required this.clockOut,
+    required this.breakMinutes,
+  });
   final DateTime clockIn;
   final DateTime? clockOut;
+  final int breakMinutes;
 }
 
 class _EntryEditSheet extends StatefulWidget {
@@ -160,6 +168,7 @@ class _EntryEditSheet extends StatefulWidget {
 class _EntryEditSheetState extends State<_EntryEditSheet> {
   late TimeOfDay _clockIn;
   TimeOfDay? _clockOut;
+  late final TextEditingController _breakController;
 
   @override
   void initState() {
@@ -168,6 +177,13 @@ class _EntryEditSheetState extends State<_EntryEditSheet> {
     _clockOut = widget.entry.clockOut == null
         ? null
         : TimeOfDay.fromDateTime(widget.entry.clockOut!);
+    _breakController = TextEditingController(text: widget.entry.breakMinutes.toString());
+  }
+
+  @override
+  void dispose() {
+    _breakController.dispose();
+    super.dispose();
   }
 
   Future<void> _pickClockIn() async {
@@ -189,10 +205,13 @@ class _EntryEditSheetState extends State<_EntryEditSheet> {
   }
 
   void _submit() {
+    final breakMinutes = int.tryParse(_breakController.text);
+    if (breakMinutes == null) return;
     Navigator.of(context).pop(
       _EntryEdit(
         clockIn: _combine(_clockIn),
         clockOut: _clockOut == null ? null : _combine(_clockOut!),
+        breakMinutes: breakMinutes,
       ),
     );
   }
@@ -218,6 +237,15 @@ class _EntryEditSheetState extends State<_EntryEditSheet> {
             time: _clockOut,
             placeholder: '未退勤（タップして設定）',
             onTap: _pickClockOut,
+          ),
+          const SizedBox(height: 10),
+          SettingsAmountField(
+            label: '休憩時間',
+            controller: _breakController,
+            suffixText: '分',
+            keyboardType: TextInputType.number,
+            textInputAction: TextInputAction.done,
+            validator: (v) => (v == null || int.tryParse(v) == null) ? '数値を入力してください' : null,
           ),
           const SizedBox(height: 20),
           FilledButton(onPressed: _submit, child: const Text('保存')),

@@ -5,6 +5,10 @@ import '../models/time_entry.dart';
 
 final _dateFormat = DateFormat('yyyy-MM-dd');
 
+bool _sameMinute(DateTime a, DateTime b) =>
+    a.year == b.year && a.month == b.month && a.day == b.day &&
+    a.hour == b.hour && a.minute == b.minute;
+
 class TimeEntryRepository {
   TimeEntryRepository(this._firestore);
 
@@ -116,25 +120,41 @@ class TimeEntryRepository {
     });
   }
 
-  /// Corrects an entry's punch times for the current day only, preserving
-  /// the original values the first time a correction is made.
+  /// Corrects an entry's punch times and/or break length, preserving the
+  /// original clock-in/out values the first time each is corrected.
+  ///
+  /// Only flags [TimeEntry.isModified] and writes anything at all if a
+  /// passed-in value actually differs from what's already recorded —
+  /// re-confirming an unchanged time (e.g. opening the edit sheet and
+  /// tapping save without picking a different time) is a no-op, not a
+  /// correction. Clock times are compared to the minute, since the edit UI
+  /// only lets the user pick to that precision.
   Future<void> correct(
     String uid,
     String workplaceId,
     TimeEntry entry, {
     DateTime? newClockIn,
     DateTime? newClockOut,
+    int? newBreakMinutes,
   }) async {
+    final clockInChanged = newClockIn != null && !_sameMinute(newClockIn, entry.clockIn);
+    final clockOutChanged = newClockOut != null &&
+        (entry.clockOut == null || !_sameMinute(newClockOut, entry.clockOut!));
+    final breakMinutesChanged = newBreakMinutes != null && newBreakMinutes != entry.breakMinutes;
+    if (!clockInChanged && !clockOutChanged && !breakMinutesChanged) return;
+
     final update = <String, dynamic>{
       'isModified': true,
-      'originalClockIn':
-          entry.originalClockIn == null ? Timestamp.fromDate(entry.clockIn) : Timestamp.fromDate(entry.originalClockIn!),
-      if (entry.clockOut != null)
-        'originalClockOut': entry.originalClockOut == null
-            ? Timestamp.fromDate(entry.clockOut!)
-            : Timestamp.fromDate(entry.originalClockOut!),
-      if (newClockIn != null) 'clockIn': Timestamp.fromDate(newClockIn),
-      if (newClockOut != null) 'clockOut': Timestamp.fromDate(newClockOut),
+      if (clockInChanged) ...{
+        'clockIn': Timestamp.fromDate(newClockIn),
+        'originalClockIn': Timestamp.fromDate(entry.originalClockIn ?? entry.clockIn),
+      },
+      if (clockOutChanged) ...{
+        'clockOut': Timestamp.fromDate(newClockOut),
+        if (entry.clockOut != null)
+          'originalClockOut': Timestamp.fromDate(entry.originalClockOut ?? entry.clockOut!),
+      },
+      if (breakMinutesChanged) 'breakMinutes': newBreakMinutes,
     };
     await _collection(uid, workplaceId).doc(entry.id).update(update);
   }

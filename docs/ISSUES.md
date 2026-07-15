@@ -55,7 +55,14 @@
   - 表示範囲は勤務先の登録月（`Workplace.createdAt`）から現在月まで（最大12ヶ月）。登録前の月は表示しない
   - 月ごとの記録一覧・打刻修正画面（`month_entries_screen.dart`）も追加。「記録を修正」から出退勤時刻を修正可能、修正すると既存の`isModified`フラグで「修正済み」バッジ表示
   - **未対応（follow-up）**：証拠画像添付（本人も「難しそう」と認識、要検討）、給料日サイクル基準の集計（現状は暦月）
-- [ ] `month_entries_screen.dart`の記録修正で休憩時間（`breakMinutes`）を編集できない（出退勤時刻のみ）。休憩を考慮した給与計算のためには修正できるようにすべき
+- [x] `month_entries_screen.dart`の記録修正で休憩時間（`breakMinutes`）を編集できるようにする
+  - `TimeEntryRepository.correct()`に`newBreakMinutes`を追加し、出退勤時刻と一緒に修正可能に
+- [x] 修正していない記録にも「修正済み」と表示される不具合
+  - 原因：`TimeEntryRepository.correct()`が、実際に値が変わったかどうかに関わらず呼ばれるたびに無条件で`isModified: true`をセットしていた。編集シートを開いて時刻を変えずに保存すると誤って「修正済み」になっていた
+  - 対応：新しい値が既存値と異なる場合のみ`isModified`をセット・Firestoreへの書き込みも行うように修正（分単位で比較、ピッカーの精度に合わせる）
+- [x] 実際の受取額を記録しても記録画面に反映されず、アプリ再起動後に反映される不具合
+  - 対応：`_MonthCard._editPayment`で保存後に`ref.invalidate(monthlyPaymentsProvider)`を呼び、強制的に最新データを再取得するように修正
+  - あわせてHome/Records画面に`RefreshIndicator`（下に引いて更新）を追加し、同種の反映漏れが起きた場合の手動リカバリ手段を用意
 - [ ] 証拠として使えるログ（GPS・タイムスタンプ）の暗号化保存の実装方針
 - [ ] 打刻証明書（公式PDFレポート）の出力機能
 
