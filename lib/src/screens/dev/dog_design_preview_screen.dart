@@ -76,30 +76,77 @@ class _DogDesignPreviewScreenState extends State<DogDesignPreviewScreen>
               ),
               const SizedBox(height: 28),
               Text(
-                '既製イラスト（Twemoji, MITライセンス）',
+                '既製イラスト（絵文字SVG）',
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 4),
               Text(
-                '自作の図形ではなく、プロがデザインした絵文字SVGをそのまま使う場合の見た目。',
+                '自作の図形ではなく、プロがデザインした絵文字SVGをそのまま使う場合の見た目。'
+                'ライセンスは配布元ごとに異なるので、使う場合は個別に要確認・要クレジット表記。',
                 style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.outline),
               ),
               const SizedBox(height: 12),
               _SvgDesignCard(
-                title: '🐶 dog face（Twemoji）',
+                title: '🐶 dog face',
+                subtitle: 'Twemoji — CC-BY 4.0（クレジット表記必須・設定画面に追加済み）',
                 assetPath: 'assets/dog_emoji/dog_face.svg',
                 bounce: t,
               ),
               const SizedBox(height: 16),
               _SvgDesignCard(
-                title: '🐕 dog（Twemoji）',
+                title: '🐕 dog',
+                subtitle: 'Twemoji — CC-BY 4.0',
                 assetPath: 'assets/dog_emoji/dog.svg',
                 bounce: t,
               ),
               const SizedBox(height: 16),
               _SvgDesignCard(
-                title: '🐩 poodle（Twemoji）',
+                title: '🐩 poodle',
+                subtitle: 'Twemoji — CC-BY 4.0',
                 assetPath: 'assets/dog_emoji/poodle.svg',
+                bounce: t,
+              ),
+              const SizedBox(height: 16),
+              _SvgDesignCard(
+                title: '🐶 dog face（Fluent Emoji, Flat）',
+                subtitle: 'Microsoft Fluent Emoji — MITライセンス（クレジット表記不要）',
+                assetPath: 'assets/dog_emoji/fluent_dog_face.svg',
+                bounce: t,
+              ),
+              const SizedBox(height: 16),
+              _SvgDesignCard(
+                title: '🐕 dog（Fluent Emoji, Flat）',
+                subtitle: 'Microsoft Fluent Emoji — MITライセンス',
+                assetPath: 'assets/dog_emoji/fluent_dog.svg',
+                bounce: t,
+              ),
+              const SizedBox(height: 16),
+              _SvgDesignCard(
+                title: '🐩 poodle（Fluent Emoji, Flat）',
+                subtitle: 'Microsoft Fluent Emoji — MITライセンス',
+                assetPath: 'assets/dog_emoji/fluent_poodle.svg',
+                bounce: t,
+              ),
+              const SizedBox(height: 16),
+              _SvgDesignCard(
+                title: '🐶 dog face（Blobmoji）',
+                subtitle: 'Blobmoji（Noto Emojiの丸っこい"ブロブ"系フォーク） — Apache 2.0',
+                assetPath: 'assets/dog_emoji/blobmoji_dog_face.svg',
+                bounce: t,
+              ),
+              const SizedBox(height: 16),
+              _SvgDesignCard(
+                title: '🐕 dog（Blobmoji）',
+                subtitle: 'Blobmoji — Apache 2.0',
+                assetPath: 'assets/dog_emoji/blobmoji_dog.svg',
+                bounce: t,
+              ),
+              const SizedBox(height: 16),
+              _SvgDesignCard(
+                title: '🐶 dog face（OpenMoji）',
+                subtitle: 'OpenMoji — CC BY-SA 4.0（クレジット表記＋派生物も同ライセンスで公開する義務あり。'
+                    '商用アプリでは要注意）',
+                assetPath: 'assets/dog_emoji/openmoji_dog_face.svg',
                 bounce: t,
               ),
             ],
@@ -111,9 +158,15 @@ class _DogDesignPreviewScreenState extends State<DogDesignPreviewScreen>
 }
 
 class _SvgDesignCard extends StatelessWidget {
-  const _SvgDesignCard({required this.title, required this.assetPath, required this.bounce});
+  const _SvgDesignCard({
+    required this.title,
+    required this.subtitle,
+    required this.assetPath,
+    required this.bounce,
+  });
 
   final String title;
+  final String subtitle;
   final String assetPath;
 
   /// 0..1, looping — reused to bounce the (otherwise static) illustration
@@ -162,7 +215,17 @@ class _SvgDesignCard extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontSize: 11),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
