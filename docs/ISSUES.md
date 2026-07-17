@@ -5,17 +5,28 @@
 
 ## デザイン・ペット
 
-- [ ] ペットのデザインを作成する（`assets/dog_emoji/` に複数候補を配置済み、採用デザインの決定・統合が未完了）
-- [ ] ペット育成の成長段階・見た目差分の設計
-- [ ] ホーム画面デザインの刷新（進行中）
-  - 本番Home画面に暫定的なA/B/C切り替えセグメントボタンを追加（`home_screen.dart`の`_HomeDesign`）。フローティング表示（Stackで重ねる）でレイアウトを押し下げない
-  - **デザインA**：現行（`_HomeContent`）
-  - **デザインB**：実装済み（`home_design_b.dart`）。縦並びのスケジュール一覧＋過去ブロックへのマジック風手書き取り消し線（`_MarkerStrikePainter`）、ペットカードを最上部に集約（なつき度・お腹の空き具合）
-    - [x] なつき度を専用データに分離（`UserProfile.affectionPoints`／`lastWorkedDate`を追加、`util/affection.dart`で計算）。連続稼働で加点、`lastWorkedDate`から日数が空くと減衰する仕組みで、`totalFood`（一生ものの成長指標）とは別の「最近ちゃんと使っているか」を表す指標にした。加点は`home_screen.dart`の自動出勤（1日1回だけ発火する経路）にフック
-    - ペットアイコンはFluent Emojiの汎用犬（`assets/dog_emoji/fluent_dog.svg`）を仮置き。本物のコーギーイラストへの差し替えは未着手
-    - 出退勤の編集操作（時刻修正・休憩追加等）はまだ未実装、表示のみ
+- [x] ペットの見た目を静的SVG（`assets/dog_emoji/fluent_dog.svg`）から、コードで描いた動くコーギー（`widgets/animated_dog.dart`の`AnimatedCorgiFace`）に置き換え。呼吸・尻尾振り・まばたきをアニメーションさせ、静止画より「生きている」感を出す方向にした
+  - きっかけ：3Dクレイ風の犬アイコン参考画像（親子犬が時計を抱くデザイン）を見て「画像ではなく動く犬がいい」という要望
+  - 画像生成手段がないため、Canvas描画＋AnimationControllerによるベクター表現で対応。本物のイラスト・Lottie等への差し替えは別途検討の余地あり
+  - `_PetHeaderCard`（`home_design_b.dart`）で最高成長段階（伝説の犬）のときだけ`sparkle`を有効化
+  - クラス名は当初`AnimatedDog`だったが、`widgets/dog_track.dart`（`dog_painter.dart`）に既存の走る/寝るアニメーション犬が同名で存在していたため`AnimatedCorgiFace`に改名して衝突を解消
+  - 初回実装は不気味な見た目になっており、プロポーション・配色・シェーディングを修正済み
+- [ ] ペット育成の成長段階・見た目差分の設計（現状は`AnimatedDog`が単一デザイン＋伝説段階のスパークルのみ。段階ごとの体型・アクセサリー差分は未着手）
+- [x] アプリ全体のテーマを「ふわふわで可愛い」方向に刷新（3Dクレイ風の犬アイコン参考画像がきっかけ）
+  - 配色：シード色をミント系（`#6FBFA0`）に変更、背景をクリーム色（`#FBF7EE`）に変更（`app.dart`）
+  - フォント：M PLUS Rounded 1c（丸ゴシック）をアプリ全体のデフォルトフォントに設定。ライセンス上バンドル可能なため`assets/fonts/`にTTFを直接配置し`pubspec.yaml`の`fonts:`で登録（Google Fontsパッケージの実行時ダウンロードは避けた）
+  - 角丸：カード28px・入力欄/ボタン20pxに拡大、ナビゲーションバーの枠線色もクリーム系に統一（`floating_nav_bar.dart`）
+  - カードの縁取り（枠線）を廃止し、色付きソフトシャドウ（elevation+shadowColor、ミント系半透明）に変更してふわっと浮いた見た目にした（`app.dart`のCardTheme）
+  - なつき度／お腹の空き具合のメーターを、フラットな`LinearProgressIndicator`から丸みのあるグラデーション塗り＋ソフトシャドウの`_SoftMeter`（`home_design_b.dart`）に変更
+  - 数値表示（今週/今月/残業等の`StatTile`）を黒地から温かみのある茶色（`#6E5236`）に変更し、木製トイっぽい質感に寄せた（`widgets/home_cards.dart`）
+  - アプリアイコン本体：`assets/icon/wrtm_icon.png`が参考画像（親子犬が時計を抱く3Dクレイ風）に差し替え済み、`flutter_launcher_icons`でiOS/Android各サイズに反映済み（このAI側では画像生成できないため、素材自体は別途用意されたもの）
+- [x] ホーム画面デザインBへの一本化（デザインAの機能をBに統合し、Bをデフォルトに変更）
+  - 元々デザインA（`_HomeContent`）にしかなかった機能をBに移植：出退勤操作（`EarningsHeroCard`）、休憩追加・一時休憩ボタン（`dog_track.dart`の`AddBreakButton`/`ExtraBreakButton`を公開クラス化して再利用）、残業承認プロンプト（`OvertimePromptCard`）、休日表示（`HolidayRestCard`）、今週/今月/残業/未払い可能性の集計タイル（`StatTile`）、Pull-to-refresh、自動出勤トリガー
+  - 共通化のため、日次/週次/月次の集計・残業警告・休日判定ロジックを`util/home_snapshot.dart`の`buildHomeSnapshot()`に抽出し、A・B両方から呼び出す形にした（重複実装によるA/Bのズレを防ぐため）
+  - 共通UIパーツ（`Greeting`/`EarningsHeroCard`/`StatTile`/`HolidayRestCard`/`OvertimePromptCard`）を`widgets/home_cards.dart`に公開クラスとして抽出し、A・Bで共用
+  - `_HomeDesign`のデフォルトを`a`から`b`に変更（`home_screen.dart`）。A/Cの切り替え自体はまだ残しているが、実質的にBが本採用
   - **デザインC**：空のプレースホルダー（`home_design_c.dart`）、未着手
-  - 方向性が決まった段階でどれか一つに絞り、切り替えUI自体も削除する
+  - 方向性が完全に固まったら、A/Cの実装とデザイン切り替えUI自体を削除する
 
 ## 勤務ルール・打刻ロジック
 

@@ -38,7 +38,7 @@ class FloatingNavBar extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: const Color(0xFFE8EBEC)),
+            border: Border.all(color: const Color(0xFFEFE6D2)),
             boxShadow: [
               BoxShadow(
                 color: colorScheme.primary.withValues(alpha: 0.18),

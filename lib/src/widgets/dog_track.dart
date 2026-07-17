@@ -44,10 +44,10 @@ class DogTrack extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (onEditBreakStart != null)
-                _AddBreakButton(onPressed: onEditBreakStart!),
+                AddBreakButton(onPressed: onEditBreakStart!),
               if (onStartExtraBreak != null) ...[
                 if (onEditBreakStart != null) const SizedBox(height: 8),
-                _ExtraBreakButton(
+                ExtraBreakButton(
                   isOnBreak: isOnExtraBreak,
                   onPressed: isOnExtraBreak ? onEndExtraBreak : onStartExtraBreak,
                 ),
@@ -120,7 +120,7 @@ class DogTrack extends StatelessWidget {
           if (!hasBreak && onEditBreakStart != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 0, 16, 10),
-              child: _AddBreakButton(onPressed: onEditBreakStart!),
+              child: AddBreakButton(onPressed: onEditBreakStart!),
             ),
           // Always available while clocked in, so an ad-hoc break (most
           // commonly taken during overtime) can be logged at any time —
@@ -128,7 +128,7 @@ class DogTrack extends StatelessWidget {
           if (onStartExtraBreak != null)
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 0, 16, 10),
-              child: _ExtraBreakButton(
+              child: ExtraBreakButton(
                 isOnBreak: isOnExtraBreak,
                 onPressed: isOnExtraBreak ? onEndExtraBreak : onStartExtraBreak,
               ),
@@ -139,8 +139,8 @@ class DogTrack extends StatelessWidget {
   }
 }
 
-class _AddBreakButton extends StatelessWidget {
-  const _AddBreakButton({required this.onPressed});
+class AddBreakButton extends StatelessWidget {
+  const AddBreakButton({super.key, required this.onPressed});
 
   final VoidCallback onPressed;
 
@@ -165,8 +165,8 @@ class _AddBreakButton extends StatelessWidget {
 /// Starts/stops an ad-hoc break on top of the scheduled one — the primary
 /// way to log a break taken during overtime, when there's no more schedule
 /// left to attach one to.
-class _ExtraBreakButton extends StatelessWidget {
-  const _ExtraBreakButton({required this.isOnBreak, required this.onPressed});
+class ExtraBreakButton extends StatelessWidget {
+  const ExtraBreakButton({super.key, required this.isOnBreak, required this.onPressed});
 
   final bool isOnBreak;
   final VoidCallback? onPressed;

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:network_info_plus/network_info_plus.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../models/employment_type.dart';
 import '../models/industry.dart';
@@ -47,6 +49,7 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
   late final TextEditingController _fixedOvertimeAllowanceController;
   late final TextEditingController _fixedOvertimeHoursController;
   late final TextEditingController _standardMonthlyHoursController;
+  late final TextEditingController _ssidController;
   late final FocusNode _wageFocus;
   late final FocusNode _breakFocus;
   late final FocusNode _overtimeFocus;
@@ -54,6 +57,8 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
   late final FocusNode _fixedOvertimeAllowanceFocus;
   late final FocusNode _fixedOvertimeHoursFocus;
   late final FocusNode _standardMonthlyHoursFocus;
+  late final FocusNode _ssidFocus;
+  bool _fetchingSsid = false;
   late TimeOfDay _startTime;
   late TimeOfDay _endTime;
   late TimeOfDay _breakStartTime;
@@ -81,6 +86,7 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
         TextEditingController(text: w?.fixedOvertimeHours?.toString() ?? '0');
     _standardMonthlyHoursController =
         TextEditingController(text: w?.standardMonthlyHours?.toString() ?? '');
+    _ssidController = TextEditingController(text: w?.autoClockInSsid ?? '');
     _startTime = _parseTime(w?.startTime) ?? const TimeOfDay(hour: 9, minute: 0);
     _endTime = _parseTime(w?.endTime) ?? const TimeOfDay(hour: 18, minute: 0);
     _breakStartTime = _parseTime(w?.breakStartTime) ?? const TimeOfDay(hour: 12, minute: 0);
@@ -100,6 +106,7 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
         FocusNode()..addListener(() => _onFocusChange(_fixedOvertimeHoursFocus));
     _standardMonthlyHoursFocus =
         FocusNode()..addListener(() => _onFocusChange(_standardMonthlyHoursFocus));
+    _ssidFocus = FocusNode()..addListener(() => _onFocusChange(_ssidFocus));
 
     // Live-updates the derived hourly-wage preview as any monthly field
     // changes, without waiting for the field to lose focus (autosave).
@@ -151,6 +158,7 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
     _fixedOvertimeAllowanceController.dispose();
     _fixedOvertimeHoursController.dispose();
     _standardMonthlyHoursController.dispose();
+    _ssidController.dispose();
     _wageFocus.dispose();
     _breakFocus.dispose();
     _overtimeFocus.dispose();
@@ -158,7 +166,35 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
     _fixedOvertimeAllowanceFocus.dispose();
     _fixedOvertimeHoursFocus.dispose();
     _standardMonthlyHoursFocus.dispose();
+    _ssidFocus.dispose();
     super.dispose();
+  }
+
+  /// Fills [_ssidController] with the network the phone is currently
+  /// connected to. Requires location permission — SSIDs are treated as
+  /// location data on both platforms — so this may prompt for it.
+  Future<void> _useCurrentWifi() async {
+    setState(() => _fetchingSsid = true);
+    try {
+      var status = await Permission.locationWhenInUse.status;
+      if (!status.isGranted) {
+        status = await Permission.locationWhenInUse.request();
+      }
+      final ssid = status.isGranted
+          ? (await NetworkInfo().getWifiName())?.replaceAll('"', '')
+          : null;
+      if (!mounted) return;
+      if (ssid == null || ssid.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('現在のWi-Fi名を取得できませんでした')),
+        );
+        return;
+      }
+      setState(() => _ssidController.text = ssid);
+      if (_isEditing) _autoSave();
+    } finally {
+      if (mounted) setState(() => _fetchingSsid = false);
+    }
   }
 
   /// Used while editing an existing workplace — silently does nothing if a
@@ -221,6 +257,7 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
           overtimeRatePercent: int.parse(_overtimeController.text),
           payday: _payday,
           holidayWeekdays: _holidayWeekdays.toList()..sort(),
+          autoClockInSsid: _ssidController.text.isEmpty ? null : _ssidController.text,
           createdAt: DateTime.now(),
         ),
       );
@@ -243,6 +280,7 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
           overtimeRatePercent: int.parse(_overtimeController.text),
           payday: _payday,
           holidayWeekdays: _holidayWeekdays.toList()..sort(),
+          autoClockInSsid: _ssidController.text.isEmpty ? null : _ssidController.text,
         ),
       );
     }
@@ -424,6 +462,37 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
           _HolidayWeekdaysField(
             selected: _holidayWeekdays,
             onToggle: _toggleHoliday,
+          ),
+          const SizedBox(height: 10),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: _ssidController,
+                  focusNode: _ssidFocus,
+                  decoration: const InputDecoration(
+                    labelText: '自動打刻用Wi-Fi（SSID）',
+                    helperText: '職場のWi-Fiにつながったら自動で出勤・退勤を記録します',
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: IconButton(
+                  onPressed: _fetchingSsid ? null : _useCurrentWifi,
+                  icon: _fetchingSsid
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.wifi),
+                  tooltip: '今つながっているWi-Fiを使う',
+                ),
+              ),
+            ],
           ),
           if (!_isEditing) ...[
             const SizedBox(height: 20),

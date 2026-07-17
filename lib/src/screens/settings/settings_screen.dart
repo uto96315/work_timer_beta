@@ -10,6 +10,7 @@ import '../../widgets/profile_form.dart';
 import '../../widgets/settings_ui.dart';
 import '../../widgets/workplace_form.dart';
 import '../dev/dog_design_preview_screen.dart';
+import 'readme_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -58,6 +59,17 @@ class SettingsScreen extends ConsumerWidget {
             const _WidgetSyncSection(),
             const SizedBox(height: 16),
             const _LicenseCreditsSection(),
+            const SizedBox(height: 16),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.description_outlined),
+                title: const Text('README'),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const ReadmeScreen()),
+                ),
+              ),
+            ),
             const SizedBox(height: 16),
             Card(
               child: ListTile(

@@ -18,40 +18,56 @@ class WorkTimerApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = ColorScheme.fromSeed(seedColor: const Color(0xFF0EA894));
+    // Soft mint/cream palette + a rounded font, aiming for the "fluffy,
+    // huggable" feel of the pet — moved away from the flatter teal/grey
+    // Material default.
+    final colorScheme = ColorScheme.fromSeed(
+      seedColor: const Color(0xFF6FBFA0),
+      brightness: Brightness.light,
+    );
+    const fontFamily = 'MPLUSRounded1c';
     return MaterialApp(
-      title: 'イキガイ',
+      title: 'ikigai',
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: colorScheme,
-        scaffoldBackgroundColor: const Color(0xFFF4F6F7),
+        fontFamily: fontFamily,
+        scaffoldBackgroundColor: const Color(0xFFFBF7EE),
         cardTheme: CardThemeData(
-          elevation: 0,
-          color: Colors.white,
+          elevation: 6,
+          shadowColor: const Color(0xFFB9E4D5).withValues(alpha: 0.6),
+          surfaceTintColor: Colors.transparent,
+          color: const Color(0xFFFFFEFA),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-            side: const BorderSide(color: Color(0xFFE8EBEC)),
+            borderRadius: BorderRadius.circular(28),
           ),
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: const Color(0xFFF4F6F7),
+          fillColor: const Color(0xFFFBF7EE),
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(20),
             borderSide: BorderSide.none,
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(20),
             borderSide: BorderSide.none,
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(20),
             borderSide: BorderSide(color: colorScheme.primary, width: 1.5),
           ),
           errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(20),
             borderSide: BorderSide(color: colorScheme.error, width: 1.2),
+          ),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
           ),
         ),
       ),

@@ -1,6 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 
 import '../../models/salary_type.dart';
 import '../../models/time_entry.dart';
@@ -10,20 +11,15 @@ import '../../providers/firebase_providers.dart';
 import '../../providers/time_entry_providers.dart';
 import '../../providers/user_profile_providers.dart';
 import '../../providers/workplace_providers.dart';
+import '../../services/wifi_clock_trigger_service.dart';
 import '../../util/earnings_calculator.dart';
+import '../../util/home_snapshot.dart';
 import '../../util/pet_stage.dart';
-import '../../util/schedule_blocks.dart';
 import '../../widgets/dog_track.dart';
+import '../../widgets/home_cards.dart';
 import '../../widgets/time_field.dart';
 import 'home_design_b.dart';
 import 'home_design_c.dart';
-
-final _yenFormat = NumberFormat.currency(
-  locale: 'ja_JP',
-  symbol: '¥',
-  decimalDigits: 0,
-);
-final _timeFormat = DateFormat('HH:mm');
 
 DateTime _timeToday(DateTime day, String hhmm) {
   final parts = hhmm.split(':');
@@ -57,7 +53,66 @@ enum _HomeDesign {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _autoClockInTriggered = false;
-  _HomeDesign _design = _HomeDesign.a;
+  _HomeDesign _design = _HomeDesign.b;
+  bool _showDesignIndicator = false;
+  Timer? _designIndicatorTimer;
+  double _dragDistance = 0;
+  final _wifiClockTrigger = WifiClockTriggerService();
+  String? _lastSeenSsid;
+
+  @override
+  void initState() {
+    super.initState();
+    _wifiClockTrigger.start(_handleWifiSsidChanged);
+  }
+
+  /// Auto clocks in/out when the device joins/leaves the workplace's
+  /// registered Wi-Fi network (see [Workplace.autoClockInSsid]). Guarded by
+  /// [_lastSeenSsid] so re-reads of the same network (e.g. a brief signal
+  /// drop) don't repeatedly toggle the entry.
+  void _handleWifiSsidChanged(String? ssid) {
+    if (ssid == _lastSeenSsid) return;
+    _lastSeenSsid = ssid;
+
+    final workplace = ref.read(primaryWorkplaceProvider).value;
+    final targetSsid = workplace?.autoClockInSsid;
+    if (workplace == null || targetSsid == null || targetSsid.isEmpty) return;
+    final uid = ref.read(currentUidProvider);
+    if (uid == null) return;
+
+    final activeEntry = ref.read(activeTimeEntryProvider).value;
+    final now = DateTime.now();
+    final onTargetNetwork = ssid == targetSsid;
+
+    if (onTargetNetwork &&
+        activeEntry == null &&
+        !workplace.holidayWeekdays.contains(now.weekday)) {
+      ref.read(timeEntryRepositoryProvider).clockIn(uid, workplace.id, workplace.breakMinutes);
+      ref.read(userProfileRepositoryProvider).recordWorkedDay(uid, now);
+    } else if (!onTargetNetwork && activeEntry != null) {
+      _clockOut(activeEntry, workplace);
+    }
+  }
+
+  void _swipeDesign(int direction) {
+    final values = _HomeDesign.values;
+    final nextIndex = (_design.index + direction) % values.length;
+    setState(() {
+      _design = values[(nextIndex + values.length) % values.length];
+      _showDesignIndicator = true;
+    });
+    _designIndicatorTimer?.cancel();
+    _designIndicatorTimer = Timer(const Duration(milliseconds: 700), () {
+      if (mounted) setState(() => _showDesignIndicator = false);
+    });
+  }
+
+  @override
+  void dispose() {
+    _designIndicatorTimer?.cancel();
+    _wifiClockTrigger.dispose();
+    super.dispose();
+  }
 
   void _maybeAutoClockIn(Workplace workplace, List<TimeEntry> todayEntries) {
     if (_autoClockInTriggered || todayEntries.isNotEmpty) return;
@@ -235,56 +290,96 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Scaffold(
       body: SafeArea(
         bottom: false,
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: workplaceAsync.when(
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, _) => Center(child: Text('エラー: $e')),
-                data: (workplace) {
-                  if (workplace == null) {
-                    return const _NoWorkplaceMessage();
-                  }
-                  switch (_design) {
-                    case _HomeDesign.b:
-                      return HomeContentB(workplace: workplace);
-                    case _HomeDesign.c:
-                      return HomeContentC(workplace: workplace);
-                    case _HomeDesign.a:
-                      return _HomeContent(
-                        workplace: workplace,
-                        onAutoClockInCheck: _maybeAutoClockIn,
-                        onEditClockIn: _editClockIn,
-                        onEditBreakStart: _editBreakStart,
-                        onClockOut: _clockOut,
-                        onUndoClockOut: _undoClockOut,
-                        onStartExtraBreak: _startExtraBreak,
-                        onEndExtraBreak: _endExtraBreak,
-                      );
-                  }
-                },
-              ),
-            ),
-            // Floats above the content instead of pushing it down, so the
-            // real layout (whether everything fits on-screen) can be
-            // checked as-is. Temporary — comes out with the rest of the
-            // switcher once a design is settled on.
-            Positioned(
-              top: 8,
-              right: 16,
-              child: Material(
-                color: Colors.transparent,
-                child: SegmentedButton<_HomeDesign>(
-                  segments: [
-                    for (final d in _HomeDesign.values)
-                      ButtonSegment(value: d, label: Text(d.label)),
-                  ],
-                  selected: {_design},
-                  onSelectionChanged: (s) => setState(() => _design = s.first),
+        child: GestureDetector(
+          // Temporary swipe-to-switch for comparing designs — replaces the
+          // segmented button, which sat on top of the content. Comes out
+          // with the rest of the switcher once a design is settled on.
+          //
+          // Reacts to drag distance, not just release velocity — a slow,
+          // deliberate swipe has near-zero velocity at the end but should
+          // still switch designs, not silently do nothing.
+          onHorizontalDragUpdate: (details) =>
+              _dragDistance += details.delta.dx,
+          onHorizontalDragEnd: (details) {
+            final velocity = details.primaryVelocity ?? 0;
+            final distance = _dragDistance;
+            _dragDistance = 0;
+            final triggerValue = velocity.abs() > 200 ? velocity : distance;
+            if (triggerValue.abs() < 60) return;
+            _swipeDesign(triggerValue < 0 ? 1 : -1);
+          },
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: workplaceAsync.when(
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (e, _) => Center(child: Text('エラー: $e')),
+                  data: (workplace) {
+                    if (workplace == null) {
+                      return const _NoWorkplaceMessage();
+                    }
+                    switch (_design) {
+                      case _HomeDesign.b:
+                        return HomeContentB(
+                          workplace: workplace,
+                          onAutoClockInCheck: _maybeAutoClockIn,
+                          onEditClockIn: _editClockIn,
+                          onEditBreakStart: _editBreakStart,
+                          onClockOut: _clockOut,
+                          onUndoClockOut: _undoClockOut,
+                          onStartExtraBreak: _startExtraBreak,
+                          onEndExtraBreak: _endExtraBreak,
+                        );
+                      case _HomeDesign.c:
+                        return HomeContentC(workplace: workplace);
+                      case _HomeDesign.a:
+                        return _HomeContent(
+                          workplace: workplace,
+                          onAutoClockInCheck: _maybeAutoClockIn,
+                          onEditClockIn: _editClockIn,
+                          onEditBreakStart: _editBreakStart,
+                          onClockOut: _clockOut,
+                          onUndoClockOut: _undoClockOut,
+                          onStartExtraBreak: _startExtraBreak,
+                          onEndExtraBreak: _endExtraBreak,
+                        );
+                    }
+                  },
                 ),
               ),
-            ),
-          ],
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: Center(
+                    child: AnimatedOpacity(
+                      opacity: _showDesignIndicator ? 1 : 0,
+                      duration: const Duration(milliseconds: 200),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 26,
+                          vertical: 16,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(
+                            0xFFE3E3E3,
+                          ).withValues(alpha: 0.94),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          _design.label,
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 34,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -328,90 +423,43 @@ class _HomeContent extends ConsumerWidget {
           onAutoClockInCheck(workplace, todayEntries);
         });
 
-        final activeEntry = todayEntries
-            .where((e) => e.clockOut == null)
-            .firstOrNull;
-        // Matches buildDaySchedule's single-shift-per-day assumption: the
-        // entry a break-start override attaches to.
-        final todayEntry = todayEntries.firstOrNull;
-        TimeEntry? lastFinishedEntry;
-        for (final e in todayEntries) {
-          if (e.clockOut == null) continue;
-          if (lastFinishedEntry == null ||
-              e.clockOut!.isAfter(lastFinishedEntry.clockOut!)) {
-            lastFinishedEntry = e;
-          }
-        }
-        final autoOvertimeEnabled =
-            ref.watch(userProfileProvider).value?.autoOvertimeEnabled ?? false;
-        final overtimeApprovedIds = ref.watch(overtimeApprovalProvider);
-
-        final scheduledEnd =
-            todayEntry?.scheduledEndOverride ??
-            _timeToday(today, workplace.endTime);
-        final untilEnd = scheduledEnd.difference(now);
-        final isPastScheduledEnd =
-            activeEntry != null && now.isAfter(scheduledEnd);
-        final overtimeApproved =
-            activeEntry != null && overtimeApprovedIds.contains(activeEntry.id);
-        // Freezes the live count at the scheduled end instead of racking up
-        // overtime automatically, until the user opts in via the prompt card
-        // below (or the setting is enabled).
-        final shouldFreezeOvertime =
-            isPastScheduledEnd && !autoOvertimeEnabled && !overtimeApproved;
-        final earningsNow = shouldFreezeOvertime ? scheduledEnd : now;
-
-        final blocks = buildDaySchedule(
-          workplace: workplace,
-          day: today,
-          entriesToday: todayEntries,
-          now: earningsNow,
-        );
-        final todayTotals = sumEarnings(
-          workplace: workplace,
-          entries: todayEntries,
-          now: earningsNow,
-        );
-
         final weekday = today.weekday;
         final weekStart = today.subtract(Duration(days: weekday - 1));
         final weekEnd = weekStart.add(const Duration(days: 7));
         final weekEntries =
             ref.watch(entriesInRangeProvider(weekStart, weekEnd)).value ??
             const [];
-        final weekTotals = sumEarnings(
-          workplace: workplace,
-          entries: weekEntries,
-          now: earningsNow,
-        );
-
         final monthStart = DateTime(today.year, today.month, 1);
         final monthEnd = DateTime(today.year, today.month + 1, 1);
         final monthEntries =
             ref.watch(entriesInRangeProvider(monthStart, monthEnd)).value ??
             const [];
-        final monthTotals = sumEarnings(
+        final autoOvertimeEnabled =
+            ref.watch(userProfileProvider).value?.autoOvertimeEnabled ?? false;
+        final overtimeApprovedIds = ref.watch(overtimeApprovalProvider);
+
+        final snapshot = buildHomeSnapshot(
           workplace: workplace,
-          entries: monthEntries,
-          now: earningsNow,
+          todayEntries: todayEntries,
+          weekEntries: weekEntries,
+          monthEntries: monthEntries,
+          today: today,
+          now: now,
+          autoOvertimeEnabled: autoOvertimeEnabled,
+          overtimeApprovedIds: overtimeApprovedIds,
         );
-
-        final isHoliday = workplace.holidayWeekdays.contains(today.weekday);
-        final isRestDay = isHoliday && todayEntries.isEmpty;
-
-        final monthOvertimeHours = monthTotals.overtimeSeconds / 3600;
-        // 過労死ラインの目安（複数月平均80時間）と、36協定の一般的な上限
-        // （月45時間）を基準に色分けし、負担が増えていることに気づけるようにする。
-        final Color? overtimeAccentColor = monthOvertimeHours >= 80
-            ? Colors.red.shade600
-            : monthOvertimeHours >= 45
-            ? Colors.orange.shade800
-            : null;
-        final overtimeCaption = monthOvertimeHours >= 80
-            ? '過労死ラインの目安を超えています'
-            : monthOvertimeHours >= 45
-            ? '36協定の上限目安（月45時間）に近づいています'
-            : null;
+        final activeEntry = snapshot.activeEntry;
+        final todayEntry = snapshot.todayEntry;
+        final lastFinishedEntry = snapshot.lastFinishedEntry;
+        final untilEnd = snapshot.untilEnd;
+        final shouldFreezeOvertime = snapshot.shouldFreezeOvertime;
+        final blocks = snapshot.blocks;
+        final todayTotals = snapshot.todayTotals;
+        final weekTotals = snapshot.weekTotals;
+        final monthTotals = snapshot.monthTotals;
+        final isRestDay = snapshot.isRestDay;
+        final overtimeAccentColor = snapshot.overtimeAccentColor;
+        final overtimeCaption = snapshot.overtimeCaption;
 
         return RefreshIndicator(
           onRefresh: () async {
@@ -423,12 +471,12 @@ class _HomeContent extends ConsumerWidget {
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
             children: [
-              const _Greeting(),
+              const Greeting(),
               const SizedBox(height: 10),
               if (isRestDay)
-                const _HolidayRestCard()
+                const HolidayRestCard()
               else ...[
-                _EarningsHeroCard(
+                EarningsHeroCard(
                   totalYen: todayTotals.totalYen,
                   isOvertime: todayTotals.overtimeSeconds > 0,
                   untilEnd: untilEnd,
@@ -445,11 +493,11 @@ class _HomeContent extends ConsumerWidget {
                       : () => onClockOut(activeEntry, workplace),
                   onUndoClockOut: lastFinishedEntry == null
                       ? null
-                      : () => onUndoClockOut(lastFinishedEntry!, workplace),
+                      : () => onUndoClockOut(lastFinishedEntry, workplace),
                 ),
-                if (shouldFreezeOvertime) ...[
+                if (shouldFreezeOvertime && activeEntry != null) ...[
                   const SizedBox(height: 10),
-                  _OvertimePromptCard(
+                  OvertimePromptCard(
                     onApprove: () => ref
                         .read(overtimeApprovalProvider.notifier)
                         .approve(activeEntry.id),
@@ -480,22 +528,22 @@ class _HomeContent extends ConsumerWidget {
               Row(
                 children: [
                   Expanded(
-                    child: _StatTile(
+                    child: StatTile(
                       label: '今週',
-                      value: _yenFormat.format(weekTotals.totalYen),
+                      value: yenFormat.format(weekTotals.totalYen),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: _StatTile(
+                    child: StatTile(
                       label: '今月',
-                      value: _yenFormat.format(monthTotals.totalYen),
+                      value: yenFormat.format(monthTotals.totalYen),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 12),
-              _StatTile(
+              StatTile(
                 label: '今月の残業',
                 value:
                     '${monthTotals.overtimeSeconds ~/ 3600}時間${(monthTotals.overtimeSeconds % 3600) ~/ 60}分',
@@ -511,9 +559,9 @@ class _HomeContent extends ConsumerWidget {
                       workplace: workplace,
                       periodOvertimeSeconds: monthTotals.overtimeSeconds,
                     );
-                    return _StatTile(
+                    return StatTile(
                       label: '見込み残業を超えた分（未払いの可能性）',
-                      value: _yenFormat.format(unpaidYen),
+                      value: yenFormat.format(unpaidYen),
                       icon: unpaidYen > 0 ? Icons.warning_amber_rounded : null,
                       accentColor: unpaidYen > 0
                           ? Colors.orange.shade800
@@ -533,222 +581,6 @@ class _HomeContent extends ConsumerWidget {
   }
 }
 
-class _Greeting extends StatelessWidget {
-  const _Greeting();
-
-  @override
-  Widget build(BuildContext context) {
-    final now = DateTime.now();
-    final dateLabel = DateFormat('M月d日(E)', 'ja_JP').format(now);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.only(left: 15),
-            child: Text(
-              dateLabel,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                color: Theme.of(context).colorScheme.outline,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _EarningsHeroCard extends StatelessWidget {
-  const _EarningsHeroCard({
-    required this.totalYen,
-    required this.isOvertime,
-    required this.untilEnd,
-    required this.isWorking,
-    required this.hasFinishedToday,
-    required this.scheduledStartLabel,
-    required this.activeEntry,
-    required this.onEditClockIn,
-    required this.onClockOut,
-    required this.onUndoClockOut,
-  });
-
-  final double totalYen;
-  final bool isOvertime;
-  final Duration untilEnd;
-  final bool isWorking;
-  final bool hasFinishedToday;
-  final String scheduledStartLabel;
-  final TimeEntry? activeEntry;
-  final VoidCallback? onEditClockIn;
-  final VoidCallback? onClockOut;
-  final VoidCallback? onUndoClockOut;
-
-  Future<void> _handleClockOutPressed(BuildContext context) async {
-    final overtime = untilEnd.isNegative;
-    if (!overtime) {
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('退勤の確認'),
-          content: const Text('退勤時間前ですが退勤してよろしいでしょうか？'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('キャンセル'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('退勤する'),
-            ),
-          ],
-        ),
-      );
-      if (confirmed != true) return;
-    }
-    onClockOut?.call();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // While working, the remaining/overtime duration is already shown by the
-    // day timeline's progress header, so this label only covers the states
-    // that timeline doesn't: before clock-in and after clock-out.
-    final statusLabel = !isWorking && hasFinishedToday
-        ? 'お疲れ様でした。'
-        : !isWorking
-        ? '出勤予定：$scheduledStartLabel'
-        : null;
-
-    final entry = activeEntry;
-
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isOvertime
-              ? [const Color(0xFFFF8A5C), const Color(0xFFE85D3D)]
-              : [const Color(0xFF19C3A6), const Color(0xFF0D8F84)],
-        ),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color:
-                (isOvertime ? const Color(0xFFE85D3D) : const Color(0xFF0D8F84))
-                    .withValues(alpha: 0.3),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (statusLabel != null) ...[
-            Text(
-              statusLabel,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-                fontSize: 12,
-              ),
-            ),
-            const SizedBox(height: 8),
-          ],
-          Text(
-            '今日稼いだお金',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            _yenFormat.format(totalYen),
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 30,
-              fontWeight: FontWeight.w800,
-              height: 1.1,
-            ),
-          ),
-          if (entry != null) ...[
-            const SizedBox(height: 10),
-            Container(height: 1, color: Colors.white.withValues(alpha: 0.2)),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                // const Icon(Icons.login_rounded, size: 16, color: Colors.white),
-                // const SizedBox(width: 6),
-                Text(
-                  '出勤 ${_timeFormat.format(entry.clockIn)}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                if (entry.isAutoClockedIn) ...[
-                  // const SizedBox(width: 4),
-                  const Text(
-                    '（自動）',
-                    style: TextStyle(color: Colors.white70, fontSize: 12),
-                  ),
-                ],
-                IconButton(
-                  icon: Icon(
-                    Icons.edit_rounded,
-                    size: 18,
-                    color: Colors.white.withValues(alpha: 0.8),
-                  ),
-                  onPressed: onEditClockIn,
-                  visualDensity: VisualDensity.compact,
-                ),
-                Spacer(),
-                FilledButton(
-                  onPressed: onClockOut == null
-                      ? null
-                      : () => _handleClockOutPressed(context),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: const Color(0xFF0D8F84),
-                    shape: const StadiumBorder(),
-                  ),
-                  child: const Text('退勤する'),
-                ),
-              ],
-            ),
-          ],
-          if (entry == null &&
-              !isWorking &&
-              hasFinishedToday &&
-              onUndoClockOut != null) ...[
-            const SizedBox(height: 10),
-            Container(height: 1, color: Colors.white.withValues(alpha: 0.2)),
-            const SizedBox(height: 10),
-            Align(
-              alignment: Alignment.centerRight,
-              child: OutlinedButton(
-                onPressed: onUndoClockOut,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  side: const BorderSide(color: Colors.white70),
-                  shape: const StadiumBorder(),
-                ),
-                child: const Text('退勤を取り消す'),
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-/// Shows the pet's current growth stage and cumulative food earned from
-/// worked hours — the long-term payoff behind the daily dog track.
 class _PetStatusCard extends StatelessWidget {
   const _PetStatusCard({required this.totalFood});
 
@@ -794,166 +626,6 @@ class _PetStatusCard extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _StatTile extends StatelessWidget {
-  const _StatTile({
-    required this.label,
-    required this.value,
-    this.icon,
-    this.accentColor,
-    this.caption,
-  });
-
-  final String label;
-  final String value;
-  final IconData? icon;
-  final Color? accentColor;
-  final String? caption;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final accent = accentColor ?? scheme.primary;
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                if (icon != null) ...[
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: accent.withValues(alpha: 0.14),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(icon, size: 15, color: accent),
-                  ),
-                  const SizedBox(width: 8),
-                ],
-                Text(label, style: Theme.of(context).textTheme.bodySmall),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: accentColor,
-              ),
-            ),
-            if (caption != null) ...[
-              const SizedBox(height: 2),
-              Text(
-                caption!,
-                style: TextStyle(
-                  color: accent,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Shown instead of the earnings hero + dog track on a day marked as a
-/// holiday in [Workplace.holidayWeekdays], as long as nothing was actually
-/// clocked in — work time simply isn't tracked on a day off.
-class _HolidayRestCard extends StatelessWidget {
-  const _HolidayRestCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFE8EBEC)),
-      ),
-      child: const Column(
-        children: [
-          Text('😴', style: TextStyle(fontSize: 40)),
-          SizedBox(height: 10),
-          Text(
-            '今日はお休みです',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-          ),
-          SizedBox(height: 4),
-          Text(
-            'ゆっくり休んで、また明日から一緒に頑張ろう🐶',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.black54, fontSize: 12),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Shown once the scheduled end time passes while "残業の自動化" is off — the
-/// live count has frozen at that point, and this asks whether to keep
-/// counting (for this shift only) or clock out now.
-class _OvertimePromptCard extends StatelessWidget {
-  const _OvertimePromptCard({
-    required this.onApprove,
-    required this.onClockOut,
-  });
-
-  final VoidCallback onApprove;
-  final VoidCallback onClockOut;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFF3E0),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFFFCC80)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            '定時になりました',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-          ),
-          const SizedBox(height: 4),
-          const Text(
-            '残業を記録しますか？計測はここで一旦止まっています。',
-            style: TextStyle(color: Colors.black54, fontSize: 12),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: onClockOut,
-                  child: const Text('退勤する'),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: FilledButton(
-                  onPressed: onApprove,
-                  child: const Text('残業を記録する'),
-                ),
-              ),
-            ],
-          ),
-        ],
       ),
     );
   }

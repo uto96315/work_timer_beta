@@ -64,6 +64,9 @@ abstract class Workplace with _$Workplace {
     /// Day of the month (1-31) salary is paid on, used to schedule a payday
     /// reminder notification. Null means not configured.
     int? payday,
+    /// Wi-Fi SSID that triggers automatic clock-in/out when the device
+    /// connects to or disconnects from it. Null/empty disables the trigger.
+    String? autoClockInSsid,
     @TimestampConverter() required DateTime createdAt,
     @NullableTimestampConverter() DateTime? updatedAt,
   }) = _Workplace;
