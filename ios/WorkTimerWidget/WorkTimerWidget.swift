@@ -7,6 +7,7 @@
 //  App Group's UserDefaults; this extension never talks to Firebase itself.
 //
 
+import AppIntents
 import WidgetKit
 import SwiftUI
 
@@ -108,13 +109,15 @@ struct WorkStats {
     let isWorking: Bool
     let isFinished: Bool
     let isOvertime: Bool
+    let isOnBreak: Bool
 
     static func compute(_ snapshot: WorkSnapshot, asOf now: Date) -> WorkStats {
+        let isOnBreak = snapshot.extraBreaks.last?.end == nil && !snapshot.extraBreaks.isEmpty
         guard snapshot.hasWorkplace else {
-            return WorkStats(totalYen: 0, progress: 0, remainingLabel: "未設定", isWorking: false, isFinished: false, isOvertime: false)
+            return WorkStats(totalYen: 0, progress: 0, remainingLabel: "未設定", isWorking: false, isFinished: false, isOvertime: false, isOnBreak: false)
         }
         guard let clockIn = snapshot.clockIn else {
-            return WorkStats(totalYen: 0, progress: 0, remainingLabel: "出勤前", isWorking: false, isFinished: false, isOvertime: false)
+            return WorkStats(totalYen: 0, progress: 0, remainingLabel: "出勤前", isWorking: false, isFinished: false, isOvertime: false, isOnBreak: false)
         }
 
         let isWorking = snapshot.clockOut == nil
@@ -172,7 +175,8 @@ struct WorkStats {
             remainingLabel: remainingLabel,
             isWorking: isWorking,
             isFinished: isFinished,
-            isOvertime: isOvertime
+            isOvertime: isOvertime,
+            isOnBreak: isOnBreak
         )
     }
 }
@@ -216,19 +220,98 @@ private let yenFormatter: NumberFormatter = {
     return formatter
 }()
 
-// Matches the app's _EarningsHeroCard gradients exactly (home_screen.dart):
-// teal while on schedule, orange once into overtime.
-private let normalGradient = [Color(red: 0x19 / 255, green: 0xC3 / 255, blue: 0xA6 / 255),
-                               Color(red: 0x0D / 255, green: 0x8F / 255, blue: 0x84 / 255)]
-private let overtimeGradient = [Color(red: 0xFF / 255, green: 0x8A / 255, blue: 0x5C / 255),
-                                 Color(red: 0xE8 / 255, green: 0x5D / 255, blue: 0x3D / 255)]
-// Used only for the "no workplace yet" empty state, which has no earnings
-// to show and so doesn't warrant the colored gradient treatment.
-private let neutralBackground = Color(red: 0xF4 / 255, green: 0xF6 / 255, blue: 0xF7 / 255)
-private let neutralText = Color(red: 0.45, green: 0.48, blue: 0.49)
+/// Mirrors `PixelColors` in `pixel_ui.dart` — the flat, hard-edged palette
+/// used across the app's pixel-art theme (Design B).
+private enum PixelColors {
+    static let ink = Color(red: 0x2E / 255, green: 0x2A / 255, blue: 0x26 / 255)
+    static let cream = Color(red: 0xFB / 255, green: 0xF3 / 255, blue: 0xDE / 255)
+    static let panel = Color(red: 0xFF / 255, green: 0xFD / 255, blue: 0xF6 / 255)
+    static let mint = Color(red: 0x5F / 255, green: 0xBE / 255, blue: 0x99 / 255)
+    static let orange = Color(red: 0xF2 / 255, green: 0xA5 / 255, blue: 0x59 / 255)
+    static let sand = Color(red: 0xED / 255, green: 0xE0 / 255, blue: 0xBE / 255)
+}
+
+private let neutralText = PixelColors.ink.opacity(0.55)
+
+/// Applies the app's pixel-art display font, `DotGothic16`, registered via
+/// this extension's own Info.plist (`UIAppFonts`) since app extensions load
+/// fonts independently of the host app.
+private func pixelFont(_ size: CGFloat) -> Font {
+    .custom("DotGothic16-Regular", size: size)
+}
+
+/// The static idle frame cropped from the app's puppy sprite sheet
+/// (`pet_sprite_widget.dart`); widgets can't run the Flame animation, so a
+/// single frame stands in for the pet, rendered without interpolation to
+/// keep its pixel edges crisp.
+private struct PixelPetView: View {
+    var size: CGFloat = 32
+
+    var body: some View {
+        Image("PetIdle")
+            .interpolation(.none)
+            .resizable()
+            .aspectRatio(contentMode: .fit)
+            .frame(width: size, height: size)
+    }
+}
+
+/// A blocky, stepped meter — a strip of solid pips instead of a smooth
+/// gradient bar — mirroring `PixelMeter` in `pixel_ui.dart`.
+private struct PixelMeter: View {
+    let value: Double
+    var segments: Int = 10
+    var height: CGFloat = 8
+
+    var body: some View {
+        let filled = Int((value.clamped(to: 0...1) * Double(segments)).rounded())
+        HStack(spacing: 2) {
+            ForEach(0..<segments, id: \.self) { index in
+                Rectangle()
+                    .fill(index < filled ? Color.white : Color.white.opacity(0.25))
+            }
+        }
+        .padding(2)
+        .frame(height: height)
+        .overlay(Rectangle().strokeBorder(Color.white.opacity(0.6), lineWidth: 1))
+    }
+}
+
+private extension Double {
+    func clamped(to range: ClosedRange<Double>) -> Double {
+        min(range.upperBound, max(range.lowerBound, self))
+    }
+}
+
+/// A square-bordered, hard-shadowed button matching `PixelButton` in
+/// `pixel_ui.dart` — flat fill, ink border, and a solid offset block behind
+/// it standing in for elevation (WidgetKit buttons ignore ButtonStyles, so
+/// this is hand-drawn from two stacked shapes rather than a real shadow).
+private struct PixelWidgetButton<I: AppIntent>: View {
+    let title: String
+    let intent: I
+    var filled = true
+
+    var body: some View {
+        Button(intent: intent) {
+            Text(title)
+                .font(pixelFont(12))
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.plain)
+        .padding(.vertical, 6)
+        .padding(.horizontal, 10)
+        .background(filled ? PixelColors.panel : Color.white.opacity(0.18))
+        .foregroundStyle(filled ? PixelColors.ink : .white)
+        .overlay(Rectangle().strokeBorder(filled ? PixelColors.ink : .white, lineWidth: 2))
+    }
+}
 
 struct WorkTimerWidgetEntryView: View {
     var entry: Provider.Entry
+    @Environment(\.widgetFamily) private var family
 
     @ViewBuilder
     var body: some View {
@@ -236,56 +319,91 @@ struct WorkTimerWidgetEntryView: View {
 
         if !entry.snapshot.hasWorkplace || entry.snapshot.clockIn == nil {
             VStack(alignment: .leading, spacing: 6) {
-                Image(systemName: "clock")
-                    .foregroundStyle(neutralText)
+                PixelPetView(size: 28)
                 Spacer()
                 Text(stats.remainingLabel)
-                    .font(.subheadline.bold())
+                    .font(pixelFont(14))
                     .foregroundStyle(neutralText)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding()
-            .containerBackground(neutralBackground, for: .widget)
+            .containerBackground(PixelColors.cream, for: .widget)
         } else {
-            let gradient = stats.isOvertime ? overtimeGradient : normalGradient
+            // Flat fill, no gradient — matches the app's EarningsHeroCard
+            // panel colors (mint while on schedule, orange in overtime).
+            let fill = stats.isOvertime ? PixelColors.orange : PixelColors.mint
+            let earnings = yenFormatter.string(from: NSNumber(value: stats.totalYen)) ?? "¥0"
 
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 4) {
-                    Image(systemName: stats.isFinished ? "checkmark.circle.fill" : "clock.fill")
-                        .font(.caption)
-                    Text(stats.isFinished ? "退勤済み" : "勤務中")
-                        .font(.caption)
-                        .fontWeight(.semibold)
+            Group {
+                if family == .systemMedium, #available(iOS 17, *) {
+                    // 犬　給与　　退勤ボタン
+                    // 　　残り時間　休憩ボタン
+                    HStack(alignment: .center, spacing: 12) {
+                        PixelPetView(size: 40)
+
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(earnings)
+                                .font(pixelFont(22))
+                                .foregroundStyle(.white)
+                                .minimumScaleFactor(0.7)
+                                .lineLimit(1)
+                            Text(stats.remainingLabel)
+                                .font(pixelFont(12))
+                                .foregroundStyle(.white.opacity(0.85))
+                        }
+
+                        Spacer(minLength: 8)
+
+                        if stats.isFinished {
+                            Text("退勤済み")
+                                .font(pixelFont(12))
+                                .foregroundStyle(.white.opacity(0.85))
+                        } else {
+                            VStack(spacing: 6) {
+                                PixelWidgetButton(title: "退勤", intent: ClockOutIntent())
+                                PixelWidgetButton(
+                                    title: stats.isOnBreak ? "休憩終了" : "休憩",
+                                    intent: ToggleBreakIntent(),
+                                    filled: stats.isOnBreak
+                                )
+                            }
+                            .frame(width: 96)
+                        }
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 4) {
+                            PixelPetView(size: 16)
+                            Text(stats.isFinished ? "退勤済み" : "勤務中")
+                                .font(pixelFont(11))
+                        }
+                        .foregroundStyle(.white.opacity(0.85))
+
+                        Text(earnings)
+                            .font(pixelFont(20))
+                            .foregroundStyle(.white)
+                            .minimumScaleFactor(0.7)
+                            .lineLimit(1)
+
+                        Spacer(minLength: 2)
+
+                        PixelMeter(value: stats.progress)
+
+                        HStack {
+                            Text("\(Int(stats.progress * 100))%")
+                            Spacer()
+                            Text(stats.remainingLabel)
+                        }
+                        .font(pixelFont(11))
+                        .foregroundStyle(.white.opacity(0.85))
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
                 }
-                .foregroundStyle(.white.opacity(0.85))
-
-                Text(yenFormatter.string(from: NSNumber(value: stats.totalYen)) ?? "¥0")
-                    .font(.title2.bold())
-                    .foregroundStyle(.white)
-                    .minimumScaleFactor(0.7)
-                    .lineLimit(1)
-
-                Spacer(minLength: 2)
-
-                ProgressView(value: stats.progress)
-                    .tint(.white)
-                    .background(Color.white.opacity(0.3))
-
-                HStack {
-                    Text("\(Int(stats.progress * 100))%")
-                    Spacer()
-                    Text(stats.remainingLabel)
-                }
-                .font(.caption2)
-                .fontWeight(.semibold)
-                .foregroundStyle(.white.opacity(0.85))
             }
-            .padding()
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-            .containerBackground(
-                LinearGradient(colors: gradient, startPoint: .topLeading, endPoint: .bottomTrailing),
-                for: .widget
-            )
+            .containerBackground(fill, for: .widget)
         }
     }
 }

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:network_info_plus/network_info_plus.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:geolocator/geolocator.dart';
 
 import '../models/employment_type.dart';
 import '../models/industry.dart';
@@ -9,6 +8,7 @@ import '../models/salary_type.dart';
 import '../models/workplace.dart';
 import '../providers/auth_providers.dart';
 import '../providers/firebase_providers.dart';
+import '../services/geofence_clock_trigger_service.dart';
 import 'settings_ui.dart';
 import 'time_field.dart';
 
@@ -49,7 +49,6 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
   late final TextEditingController _fixedOvertimeAllowanceController;
   late final TextEditingController _fixedOvertimeHoursController;
   late final TextEditingController _standardMonthlyHoursController;
-  late final TextEditingController _ssidController;
   late final FocusNode _wageFocus;
   late final FocusNode _breakFocus;
   late final FocusNode _overtimeFocus;
@@ -57,8 +56,9 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
   late final FocusNode _fixedOvertimeAllowanceFocus;
   late final FocusNode _fixedOvertimeHoursFocus;
   late final FocusNode _standardMonthlyHoursFocus;
-  late final FocusNode _ssidFocus;
-  bool _fetchingSsid = false;
+  bool _fetchingLocation = false;
+  double? _autoClockInLatitude;
+  double? _autoClockInLongitude;
   late TimeOfDay _startTime;
   late TimeOfDay _endTime;
   late TimeOfDay _breakStartTime;
@@ -86,7 +86,8 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
         TextEditingController(text: w?.fixedOvertimeHours?.toString() ?? '0');
     _standardMonthlyHoursController =
         TextEditingController(text: w?.standardMonthlyHours?.toString() ?? '');
-    _ssidController = TextEditingController(text: w?.autoClockInSsid ?? '');
+    _autoClockInLatitude = w?.autoClockInLatitude;
+    _autoClockInLongitude = w?.autoClockInLongitude;
     _startTime = _parseTime(w?.startTime) ?? const TimeOfDay(hour: 9, minute: 0);
     _endTime = _parseTime(w?.endTime) ?? const TimeOfDay(hour: 18, minute: 0);
     _breakStartTime = _parseTime(w?.breakStartTime) ?? const TimeOfDay(hour: 12, minute: 0);
@@ -106,7 +107,6 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
         FocusNode()..addListener(() => _onFocusChange(_fixedOvertimeHoursFocus));
     _standardMonthlyHoursFocus =
         FocusNode()..addListener(() => _onFocusChange(_standardMonthlyHoursFocus));
-    _ssidFocus = FocusNode()..addListener(() => _onFocusChange(_ssidFocus));
 
     // Live-updates the derived hourly-wage preview as any monthly field
     // changes, without waiting for the field to lose focus (autosave).
@@ -158,7 +158,6 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
     _fixedOvertimeAllowanceController.dispose();
     _fixedOvertimeHoursController.dispose();
     _standardMonthlyHoursController.dispose();
-    _ssidController.dispose();
     _wageFocus.dispose();
     _breakFocus.dispose();
     _overtimeFocus.dispose();
@@ -166,35 +165,41 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
     _fixedOvertimeAllowanceFocus.dispose();
     _fixedOvertimeHoursFocus.dispose();
     _standardMonthlyHoursFocus.dispose();
-    _ssidFocus.dispose();
     super.dispose();
   }
 
-  /// Fills [_ssidController] with the network the phone is currently
-  /// connected to. Requires location permission — SSIDs are treated as
-  /// location data on both platforms — so this may prompt for it.
-  Future<void> _useCurrentWifi() async {
-    setState(() => _fetchingSsid = true);
+  /// Registers the device's current GPS position as the auto clock-in/out
+  /// geofence. Requests "always" location permission — required so the
+  /// geofence can still fire while the app is backgrounded or terminated.
+  Future<void> _registerCurrentLocation() async {
+    setState(() => _fetchingLocation = true);
     try {
-      var status = await Permission.locationWhenInUse.status;
-      if (!status.isGranted) {
-        status = await Permission.locationWhenInUse.request();
-      }
-      final ssid = status.isGranted
-          ? (await NetworkInfo().getWifiName())?.replaceAll('"', '')
-          : null;
-      if (!mounted) return;
-      if (ssid == null || ssid.isEmpty) {
+      final granted = await GeofenceClockTriggerService().requestPermissions();
+      if (!granted) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('現在のWi-Fi名を取得できませんでした')),
+          const SnackBar(content: Text('位置情報の「常に許可」が必要です')),
         );
         return;
       }
-      setState(() => _ssidController.text = ssid);
+      final position = await Geolocator.getCurrentPosition();
+      if (!mounted) return;
+      setState(() {
+        _autoClockInLatitude = position.latitude;
+        _autoClockInLongitude = position.longitude;
+      });
       if (_isEditing) _autoSave();
     } finally {
-      if (mounted) setState(() => _fetchingSsid = false);
+      if (mounted) setState(() => _fetchingLocation = false);
     }
+  }
+
+  Future<void> _clearAutoClockInLocation() async {
+    setState(() {
+      _autoClockInLatitude = null;
+      _autoClockInLongitude = null;
+    });
+    if (_isEditing) _autoSave();
   }
 
   /// Used while editing an existing workplace — silently does nothing if a
@@ -257,7 +262,8 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
           overtimeRatePercent: int.parse(_overtimeController.text),
           payday: _payday,
           holidayWeekdays: _holidayWeekdays.toList()..sort(),
-          autoClockInSsid: _ssidController.text.isEmpty ? null : _ssidController.text,
+          autoClockInLatitude: _autoClockInLatitude,
+          autoClockInLongitude: _autoClockInLongitude,
           createdAt: DateTime.now(),
         ),
       );
@@ -280,7 +286,8 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
           overtimeRatePercent: int.parse(_overtimeController.text),
           payday: _payday,
           holidayWeekdays: _holidayWeekdays.toList()..sort(),
-          autoClockInSsid: _ssidController.text.isEmpty ? null : _ssidController.text,
+          autoClockInLatitude: _autoClockInLatitude,
+          autoClockInLongitude: _autoClockInLongitude,
         ),
       );
     }
@@ -464,35 +471,11 @@ class _WorkplaceFormState extends ConsumerState<WorkplaceForm> {
             onToggle: _toggleHoliday,
           ),
           const SizedBox(height: 10),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: TextFormField(
-                  controller: _ssidController,
-                  focusNode: _ssidFocus,
-                  decoration: const InputDecoration(
-                    labelText: '自動打刻用Wi-Fi（SSID）',
-                    helperText: '職場のWi-Fiにつながったら自動で出勤・退勤を記録します',
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: IconButton(
-                  onPressed: _fetchingSsid ? null : _useCurrentWifi,
-                  icon: _fetchingSsid
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.wifi),
-                  tooltip: '今つながっているWi-Fiを使う',
-                ),
-              ),
-            ],
+          _AutoClockInLocationField(
+            hasLocation: _autoClockInLatitude != null,
+            fetching: _fetchingLocation,
+            onRegister: _registerCurrentLocation,
+            onClear: _clearAutoClockInLocation,
           ),
           if (!_isEditing) ...[
             const SizedBox(height: 20),
@@ -572,6 +555,67 @@ class _HolidayWeekdaysField extends StatelessWidget {
                 checkmarkColor: scheme.primary,
               ),
           ],
+        ),
+      ],
+    );
+  }
+}
+
+/// Registers/clears the GPS geofence used for [Workplace.autoClockInLatitude]
+/// / [Workplace.autoClockInLongitude] — auto clock-in/out on arrival/departure
+/// from this location, even while the app is backgrounded or terminated.
+class _AutoClockInLocationField extends StatelessWidget {
+  const _AutoClockInLocationField({
+    required this.hasLocation,
+    required this.fetching,
+    required this.onRegister,
+    required this.onClear,
+  });
+
+  final bool hasLocation;
+  final bool fetching;
+  final VoidCallback onRegister;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('自動打刻用の位置（GPS）', style: Theme.of(context).textTheme.bodyMedium),
+              const SizedBox(height: 2),
+              Text(
+                hasLocation
+                    ? '登録済み — この場所に着いたら自動で出勤、離れたら自動で退勤を記録します'
+                    : '未登録 — 職場にいる状態でボタンを押すと現在地を登録します',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        if (hasLocation)
+          IconButton(
+            onPressed: onClear,
+            icon: const Icon(Icons.location_off_outlined),
+            tooltip: '自動打刻の位置登録を解除',
+          ),
+        IconButton(
+          onPressed: fetching ? null : onRegister,
+          icon: fetching
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.my_location),
+          tooltip: '現在地を登録',
         ),
       ],
     );

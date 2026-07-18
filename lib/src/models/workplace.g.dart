@@ -32,7 +32,8 @@ _Workplace _$WorkplaceFromJson(Map<String, dynamic> json) => _Workplace(
           .toList() ??
       const [],
   payday: (json['payday'] as num?)?.toInt(),
-  autoClockInSsid: json['autoClockInSsid'] as String?,
+  autoClockInLatitude: (json['autoClockInLatitude'] as num?)?.toDouble(),
+  autoClockInLongitude: (json['autoClockInLongitude'] as num?)?.toDouble(),
   createdAt: const TimestampConverter().fromJson(json['createdAt']),
   updatedAt: const NullableTimestampConverter().fromJson(json['updatedAt']),
 );
@@ -56,7 +57,8 @@ Map<String, dynamic> _$WorkplaceToJson(
   'overtimeRatePercent': instance.overtimeRatePercent,
   'holidayWeekdays': instance.holidayWeekdays,
   'payday': instance.payday,
-  'autoClockInSsid': instance.autoClockInSsid,
+  'autoClockInLatitude': instance.autoClockInLatitude,
+  'autoClockInLongitude': instance.autoClockInLongitude,
   'createdAt': const TimestampConverter().toJson(instance.createdAt),
   'updatedAt': const NullableTimestampConverter().toJson(instance.updatedAt),
 };

@@ -63,7 +63,7 @@ class SettingsScreen extends ConsumerWidget {
             Card(
               child: ListTile(
                 leading: const Icon(Icons.description_outlined),
-                title: const Text('README'),
+                title: const Text('VISION'),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const ReadmeScreen()),

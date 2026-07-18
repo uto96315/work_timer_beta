@@ -197,14 +197,23 @@ deep-researchによる調査結果。「GPS型とタイムスタンプ型のど�
 - GPSの法的性質論（「その場にいた」と「労働していた」の区別）は理論的な整理としては検証時に票が割れ、T4U事件という個別判例の事実認定の範囲でのみ確認できた。一般法理として断定はできない
 - 厚労省ガイドラインには複数版（現行版と旧版と見られるもの）が混在しており、細部の記載に差がある可能性がある
 
-### Wi-Fi SSIDトリガーの実装状況（2026-07-17）
+### 自動打刻トリガーの実装状況（2026-07-17、GPSジオフェンスに変更）
 
-「登録したWi-Fiに接続したら自動で出退勤を記録する」機能をMVPとして実装済み（`lib/src/services/wifi_clock_trigger_service.dart`、`lib/src/screens/home/home_screen.dart`、`lib/src/widgets/workplace_form.dart`）。
+Wi-Fi SSIDトリガー（フォアグラウンド限定）はMVPとして一度実装したが、「アプリを閉じていても常時発火させる」ことを必須要件としたため、**GPSジオフェンスに切り替えた**。
 
-- SSIDの取得はiOS・Androidどちらも**位置情報の許可が必要**（SSIDは位置を特定できる情報として扱われるため）。GPSを避けてWi-Fiにしても、権限的な負担は軽くならない
-- iOS側は「Access WiFi Information」エンタイトルメント（`com.apple.developer.networking.wifi-info`）を`Runner.entitlements`に追加済みだが、**Xcodeの Signing & Capabilities で capability を有効化する必要がある**（Apple Developer Portal側のApp ID capability登録を伴う）。これをしないと実機ビルド・TestFlight配信時にコード署名で失敗する可能性がある
-- 実装は「アプリがフォアグラウンドで動いている間の接続イベント監視」であり、常時バックグラウンド監視ではない。既存の自動打刻（`_maybeAutoClockIn`）と同様、アプリが起動していないと発火しない制約がある
-- 実機（物理デバイス）でのWi-Fi接続テストは未実施。シミュレータではSSID取得が正しく動作しないため、実機での動作確認が必要
+- Wi-Fi単体でのバックグラウンド常時監視はOSの制約上ほぼ不可能（iOSに一般アプリ向けの公開APIがなく、Androidも8以降バックグラウンドの接続変化通知が制限されている）
+- 一方GPSジオフェンス（`CLLocationManager`のregion monitoring／Androidの`GeofencingClient`）は、**アプリがバックグラウンド／terminated状態でもOSが直接アプリを起こして通知してくれる**、正式にサポートされた仕組み
+- 実装は`native_geofence`パッケージを使用。`lib/src/services/geofence_clock_trigger_service.dart`の`handleGeofenceEvent`がOSから直接呼ばれる背景アイソレート上のコールバックで、Riverpodのウィジェットツリーを経由せずFirebaseを再初期化してFirestoreに直接出退勤を記録する
+- `Workplace`モデルに`autoClockInLatitude`/`autoClockInLongitude`を追加（旧`autoClockInSsid`は廃止）。`workplace_form.dart`から現在地をワンタップで登録できる
+- 位置情報は「常に許可（Always）」が必要 ―― iOS/Androidどちらも、アプリを閉じていてもジオフェンスイベントを受け取るための必須要件
+- ジオフェンスの半径は150m固定（GPSのドリフトを吸収するための余裕）
+
+### 残っている作業（実機・手動対応が必要）
+
+- **iOS**: `ios/Podfile`が未生成の状態のため、Xcodeで一度ビルド（またはpod install）してPodfileを生成し、`platform :ios, '14.0'`以上に設定する必要がある
+- 実機（物理デバイス）でのジオフェンス動作確認は未実施。シミュレータはジオフェンスイベントが正しく発火しないことが多いため、実機でのテストが必須
+- Android実機テストも未実施。特にAndroid 10+の「バックグラウンドの位置情報」許可は、OSの設定画面から手動で「常に許可」に変更する追加ステップが必要になる場合がある
+- App Store/Google Play審査でバックグラウンド位置情報の使用理由を説明する審査ノートの準備が必要（「勤務先に着いたら自動で出退勤を記録するため」等）
 
 ## 10. 原文メモ（要約前の元テキスト）
 

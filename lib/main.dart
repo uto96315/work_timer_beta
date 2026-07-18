@@ -11,6 +11,7 @@ import 'firebase_options.dart';
 import 'src/app.dart';
 import 'src/providers/notification_providers.dart';
 import 'src/providers/widget_sync_providers.dart';
+import 'src/services/geofence_clock_trigger_service.dart';
 import 'src/services/notification_service.dart';
 import 'src/services/widget_sync_service.dart';
 
@@ -36,6 +37,8 @@ void main() async {
 
   final widgetSyncService = WidgetSyncService();
   await widgetSyncService.init();
+
+  await GeofenceClockTriggerService().initialize();
 
   runApp(
     ProviderScope(

@@ -11,12 +11,13 @@ import '../../providers/firebase_providers.dart';
 import '../../providers/time_entry_providers.dart';
 import '../../providers/user_profile_providers.dart';
 import '../../providers/workplace_providers.dart';
-import '../../services/wifi_clock_trigger_service.dart';
+import '../../services/geofence_clock_trigger_service.dart';
 import '../../util/earnings_calculator.dart';
 import '../../util/home_snapshot.dart';
 import '../../util/pet_stage.dart';
 import '../../widgets/dog_track.dart';
 import '../../widgets/home_cards.dart';
+import '../../widgets/pet_sprite_widget.dart';
 import '../../widgets/time_field.dart';
 import 'home_design_b.dart';
 import 'home_design_c.dart';
@@ -57,41 +58,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool _showDesignIndicator = false;
   Timer? _designIndicatorTimer;
   double _dragDistance = 0;
-  final _wifiClockTrigger = WifiClockTriggerService();
-  String? _lastSeenSsid;
+  final _geofenceTrigger = GeofenceClockTriggerService();
 
   @override
   void initState() {
     super.initState();
-    _wifiClockTrigger.start(_handleWifiSsidChanged);
-  }
-
-  /// Auto clocks in/out when the device joins/leaves the workplace's
-  /// registered Wi-Fi network (see [Workplace.autoClockInSsid]). Guarded by
-  /// [_lastSeenSsid] so re-reads of the same network (e.g. a brief signal
-  /// drop) don't repeatedly toggle the entry.
-  void _handleWifiSsidChanged(String? ssid) {
-    if (ssid == _lastSeenSsid) return;
-    _lastSeenSsid = ssid;
-
     final workplace = ref.read(primaryWorkplaceProvider).value;
-    final targetSsid = workplace?.autoClockInSsid;
-    if (workplace == null || targetSsid == null || targetSsid.isEmpty) return;
-    final uid = ref.read(currentUidProvider);
-    if (uid == null) return;
-
-    final activeEntry = ref.read(activeTimeEntryProvider).value;
-    final now = DateTime.now();
-    final onTargetNetwork = ssid == targetSsid;
-
-    if (onTargetNetwork &&
-        activeEntry == null &&
-        !workplace.holidayWeekdays.contains(now.weekday)) {
-      ref.read(timeEntryRepositoryProvider).clockIn(uid, workplace.id, workplace.breakMinutes);
-      ref.read(userProfileRepositoryProvider).recordWorkedDay(uid, now);
-    } else if (!onTargetNetwork && activeEntry != null) {
-      _clockOut(activeEntry, workplace);
-    }
+    if (workplace != null) _geofenceTrigger.syncGeofence(workplace);
   }
 
   void _swipeDesign(int direction) {
@@ -110,7 +83,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void dispose() {
     _designIndicatorTimer?.cancel();
-    _wifiClockTrigger.dispose();
     super.dispose();
   }
 
@@ -236,12 +208,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         );
   }
 
-  Future<void> _clockOut(TimeEntry entry, Workplace workplace) async {
+  Future<void> _clockOut(
+    TimeEntry entry,
+    Workplace workplace, {
+    DateTime? clockOutTime,
+  }) async {
     final uid = ref.read(currentUidProvider);
     if (uid == null) return;
     await ref
         .read(timeEntryRepositoryProvider)
-        .clockOut(uid, workplace.id, entry.id);
+        .clockOut(uid, workplace.id, entry.id, clockOutTime: clockOutTime);
     final foodEarned = _foodForEntry(entry, workplace);
     await ref.read(userProfileRepositoryProvider).addFood(uid, foodEarned);
   }
@@ -286,6 +262,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final workplaceAsync = ref.watch(primaryWorkplaceProvider);
+
+    // Keeps the OS-level geofence in sync whenever the workplace's
+    // registered auto clock-in location changes. Actual clock-in/out on
+    // arrival/departure is handled by `handleGeofenceEvent` in a background
+    // isolate, independent of this widget's lifecycle — the initial sync
+    // (covering app launch) happens in `initState`.
+    ref.listen(primaryWorkplaceProvider, (_, next) {
+      final workplace = next.value;
+      if (workplace != null) _geofenceTrigger.syncGeofence(workplace);
+    });
 
     return Scaffold(
       body: SafeArea(
@@ -402,7 +388,8 @@ class _HomeContent extends ConsumerWidget {
   final void Function(Workplace, List<TimeEntry>) onAutoClockInCheck;
   final Future<void> Function(TimeEntry, Workplace) onEditClockIn;
   final Future<void> Function(TimeEntry, Workplace, DateTime) onEditBreakStart;
-  final Future<void> Function(TimeEntry, Workplace) onClockOut;
+  final Future<void> Function(TimeEntry, Workplace, {DateTime? clockOutTime})
+  onClockOut;
   final Future<void> Function(TimeEntry, Workplace) onUndoClockOut;
   final Future<void> Function(TimeEntry, String) onStartExtraBreak;
   final Future<void> Function(TimeEntry, String) onEndExtraBreak;
@@ -501,7 +488,11 @@ class _HomeContent extends ConsumerWidget {
                     onApprove: () => ref
                         .read(overtimeApprovalProvider.notifier)
                         .approve(activeEntry.id),
-                    onClockOut: () => onClockOut(activeEntry, workplace),
+                    onClockOut: () => onClockOut(
+                      activeEntry,
+                      workplace,
+                      clockOutTime: snapshot.scheduledEnd,
+                    ),
                   ),
                 ],
                 const SizedBox(height: 10),
@@ -597,7 +588,7 @@ class _PetStatusCard extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
           children: [
-            Text(stage.emoji, style: const TextStyle(fontSize: 28)),
+            const PetSpriteView(size: 32),
             const SizedBox(width: 12),
             Expanded(
               child: Column(

@@ -11,6 +11,7 @@ import 'screens/onboarding/splash_screen.dart';
 import 'screens/onboarding/welcome_screen.dart';
 import 'screens/records/records_screen.dart';
 import 'screens/settings/settings_screen.dart';
+import 'services/widget_pending_action_service.dart';
 import 'widgets/floating_nav_bar.dart';
 
 class WorkTimerApp extends StatelessWidget {
@@ -18,56 +19,73 @@ class WorkTimerApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Soft mint/cream palette + a rounded font, aiming for the "fluffy,
-    // huggable" feel of the pet — moved away from the flatter teal/grey
-    // Material default.
+    // Pixel-art palette + a dot-matrix font, matching the pixel-sprite pet:
+    // flat colors, square corners everywhere, no blur/gradients on chrome.
+    const ink = Color(0xFF2E2A26);
     final colorScheme = ColorScheme.fromSeed(
-      seedColor: const Color(0xFF6FBFA0),
+      seedColor: const Color(0xFF5FBE99),
       brightness: Brightness.light,
-    );
-    const fontFamily = 'MPLUSRounded1c';
+    ).copyWith(outline: ink.withValues(alpha: 0.6));
     return MaterialApp(
       title: 'ikigai',
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: colorScheme,
-        fontFamily: fontFamily,
-        scaffoldBackgroundColor: const Color(0xFFFBF7EE),
+        fontFamily: 'DotGothic16',
+        scaffoldBackgroundColor: const Color(0xFFFBF3DE),
         cardTheme: CardThemeData(
-          elevation: 6,
-          shadowColor: const Color(0xFFB9E4D5).withValues(alpha: 0.6),
+          elevation: 0,
           surfaceTintColor: Colors.transparent,
-          color: const Color(0xFFFFFEFA),
+          color: const Color(0xFFFFFDF6),
+          margin: EdgeInsets.zero,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(28),
+            borderRadius: BorderRadius.zero,
+            side: const BorderSide(color: ink, width: 3),
           ),
         ),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: const Color(0xFFFBF7EE),
+          fillColor: const Color(0xFFFFFDF6),
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(20),
-            borderSide: BorderSide.none,
+          border: const OutlineInputBorder(
+            borderRadius: BorderRadius.zero,
+            borderSide: BorderSide(color: ink, width: 2),
           ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(20),
-            borderSide: BorderSide.none,
+          enabledBorder: const OutlineInputBorder(
+            borderRadius: BorderRadius.zero,
+            borderSide: BorderSide(color: ink, width: 2),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(20),
-            borderSide: BorderSide(color: colorScheme.primary, width: 1.5),
+            borderRadius: BorderRadius.zero,
+            borderSide: BorderSide(color: colorScheme.primary, width: 3),
           ),
           errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(20),
-            borderSide: BorderSide(color: colorScheme.error, width: 1.2),
+            borderRadius: BorderRadius.zero,
+            borderSide: BorderSide(color: colorScheme.error, width: 2),
           ),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.zero,
+              side: BorderSide(color: ink, width: 3),
             ),
+          ),
+        ),
+        filledButtonTheme: FilledButtonThemeData(
+          style: FilledButton.styleFrom(
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.zero,
+              side: BorderSide(color: ink, width: 3),
+            ),
+          ),
+        ),
+        outlinedButtonTheme: OutlinedButtonThemeData(
+          style: OutlinedButton.styleFrom(
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.zero,
+            ),
+            side: const BorderSide(color: ink, width: 2),
           ),
         ),
       ),
@@ -106,8 +124,31 @@ class _RootScaffold extends ConsumerStatefulWidget {
   ConsumerState<_RootScaffold> createState() => _RootScaffoldState();
 }
 
-class _RootScaffoldState extends ConsumerState<_RootScaffold> {
+class _RootScaffoldState extends ConsumerState<_RootScaffold> with WidgetsBindingObserver {
   int _index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    applyPendingWidgetActions(ref);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Catches 退勤/休憩 taps made on the iOS home-screen widget while the app
+    // was backgrounded — see widget_pending_action_service.dart for why the
+    // widget can't write them to Firestore itself.
+    if (state == AppLifecycleState.resumed) {
+      applyPendingWidgetActions(ref);
+    }
+  }
 
   static const _screens = [
     HomeScreen(),

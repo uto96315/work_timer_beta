@@ -24,6 +24,7 @@ _UserProfile _$UserProfileFromJson(Map<String, dynamic> json) => _UserProfile(
   totalFood: (json['totalFood'] as num?)?.toInt() ?? 0,
   affectionPoints: (json['affectionPoints'] as num?)?.toInt() ?? 0,
   lastWorkedDate: json['lastWorkedDate'] as String?,
+  petBornAt: const NullableTimestampConverter().fromJson(json['petBornAt']),
   updatedAt: const NullableTimestampConverter().fromJson(json['updatedAt']),
 );
 
@@ -44,6 +45,7 @@ Map<String, dynamic> _$UserProfileToJson(
   'totalFood': instance.totalFood,
   'affectionPoints': instance.affectionPoints,
   'lastWorkedDate': instance.lastWorkedDate,
+  'petBornAt': const NullableTimestampConverter().toJson(instance.petBornAt),
   'updatedAt': const NullableTimestampConverter().toJson(instance.updatedAt),
 };
 

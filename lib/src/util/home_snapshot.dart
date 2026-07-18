@@ -15,6 +15,7 @@ class HomeSnapshot {
     required this.todayEntry,
     required this.lastFinishedEntry,
     required this.untilEnd,
+    required this.scheduledEnd,
     required this.shouldFreezeOvertime,
     required this.todayTotals,
     required this.weekTotals,
@@ -29,6 +30,7 @@ class HomeSnapshot {
   final TimeEntry? todayEntry;
   final TimeEntry? lastFinishedEntry;
   final Duration untilEnd;
+  final DateTime scheduledEnd;
   final bool shouldFreezeOvertime;
   final EarningsTotals todayTotals;
   final EarningsTotals weekTotals;
@@ -118,6 +120,7 @@ HomeSnapshot buildHomeSnapshot({
     todayEntry: todayEntry,
     lastFinishedEntry: lastFinishedEntry,
     untilEnd: untilEnd,
+    scheduledEnd: scheduledEnd,
     shouldFreezeOvertime: shouldFreezeOvertime,
     todayTotals: todayTotals,
     weekTotals: weekTotals,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../models/time_entry.dart';
+import 'pixel_ui.dart';
 
 /// Shared formatters/widgets between the home screen designs — kept in one
 /// place so both render the same earnings figures, warnings, and controls
@@ -105,27 +106,11 @@ class EarningsHeroCard extends StatelessWidget {
 
     final entry = activeEntry;
 
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isOvertime
-              ? [const Color(0xFFFFAB84), const Color(0xFFEE7A57)]
-              : [const Color(0xFF7FDCC2), const Color(0xFF48B79E)],
-        ),
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(
-            color:
-                (isOvertime ? const Color(0xFFEE7A57) : const Color(0xFF48B79E))
-                    .withValues(alpha: 0.35),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
+    return PixelPanel(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+      color: isOvertime ? PixelColors.orange : PixelColors.mint,
+      borderWidth: 2,
+      shadowOffset: 3,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -164,38 +149,45 @@ class EarningsHeroCard extends StatelessWidget {
             const SizedBox(height: 10),
             Row(
               children: [
-                Text(
-                  '出勤 ${homeTimeFormat.format(entry.clockIn)}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
+                Expanded(
+                  child: Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      Text(
+                        '出勤 ${homeTimeFormat.format(entry.clockIn)}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      if (entry.isAutoClockedIn) ...[
+                        const Text(
+                          '（自動）',
+                          style: TextStyle(color: Colors.white70, fontSize: 12),
+                        ),
+                      ],
+                      GestureDetector(
+                        onTap: onEditClockIn,
+                        child: Padding(
+                          padding: const EdgeInsets.all(6),
+                          child: Icon(
+                            Icons.edit_rounded,
+                            size: 16,
+                            color: Colors.white.withValues(alpha: 0.8),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                if (entry.isAutoClockedIn) ...[
-                  const Text(
-                    '（自動）',
-                    style: TextStyle(color: Colors.white70, fontSize: 12),
-                  ),
-                ],
-                IconButton(
-                  icon: Icon(
-                    Icons.edit_rounded,
-                    size: 18,
-                    color: Colors.white.withValues(alpha: 0.8),
-                  ),
-                  onPressed: onEditClockIn,
-                  visualDensity: VisualDensity.compact,
-                ),
-                Spacer(),
-                FilledButton(
+                const SizedBox(width: 8),
+                PixelButton(
                   onPressed: onClockOut == null
                       ? null
                       : () => _handleClockOutPressed(context),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: const Color(0xFF0D8F84),
-                    shape: const StadiumBorder(),
-                  ),
+                  color: Colors.white,
+                  textColor: const Color(0xFF0D8F84),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   child: const Text('退勤する'),
                 ),
               ],
@@ -210,13 +202,12 @@ class EarningsHeroCard extends StatelessWidget {
             const SizedBox(height: 10),
             Align(
               alignment: Alignment.centerRight,
-              child: OutlinedButton(
+              child: PixelButton(
                 onPressed: onUndoClockOut,
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  side: const BorderSide(color: Colors.white70),
-                  shape: const StadiumBorder(),
-                ),
+                color: isOvertime ? PixelColors.orange : PixelColors.mint,
+                textColor: Colors.white,
+                borderColor: Colors.white70,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                 child: const Text('退勤を取り消す'),
               ),
             ),
@@ -251,50 +242,47 @@ class StatTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final accent = accentColor ?? scheme.primary;
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                if (icon != null) ...[
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: accent.withValues(alpha: 0.14),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(icon, size: 15, color: accent),
+    return PixelPanel(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              if (icon != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.16),
+                    border: Border.all(color: accent, width: 2),
                   ),
-                  const SizedBox(width: 8),
-                ],
-                Text(label, style: Theme.of(context).textTheme.bodySmall),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: accentColor ?? _valueBrown,
-              ),
-            ),
-            if (caption != null) ...[
-              const SizedBox(height: 2),
-              Text(
-                caption!,
-                style: TextStyle(
-                  color: accent,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
+                  child: Icon(icon, size: 14, color: accent),
                 ),
-              ),
+                const SizedBox(width: 8),
+              ],
+              Text(label, style: Theme.of(context).textTheme.bodySmall),
             ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: accentColor ?? _valueBrown,
+            ),
+          ),
+          if (caption != null) ...[
+            const SizedBox(height: 2),
+            Text(
+              caption!,
+              style: TextStyle(
+                color: accent,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -308,13 +296,8 @@ class HolidayRestCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return PixelPanel(
       padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: const Color(0xFFEFE6D2)),
-      ),
       child: const Column(
         children: [
           Text('😴', style: TextStyle(fontSize: 40)),
@@ -346,13 +329,10 @@ class OvertimePromptCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return PixelPanel(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFF3E0),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFFFCC80)),
-      ),
+      color: const Color(0xFFFFF3E0),
+      borderColor: PixelColors.orangeDark,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -369,16 +349,19 @@ class OvertimePromptCard extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: OutlinedButton(
+                child: PixelButton(
                   onPressed: onClockOut,
-                  child: const Text('退勤する'),
+                  color: const Color(0xFFFFF3E0),
+                  textColor: PixelColors.ink,
+                  child: const Center(child: Text('退勤する')),
                 ),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: FilledButton(
+                child: PixelButton(
                   onPressed: onApprove,
-                  child: const Text('残業を記録する'),
+                  color: PixelColors.orange,
+                  child: const Center(child: Text('残業を記録する')),
                 ),
               ),
             ],

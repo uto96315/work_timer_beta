@@ -51,4 +51,14 @@ class UserProfileRepository {
       'updatedAt': Timestamp.fromDate(DateTime.now()),
     }, SetOptions(merge: true));
   }
+
+  /// Sets the pet's "birth" date the first time this is called for [uid] —
+  /// callers are expected to only call this when `UserProfile.petBornAt` is
+  /// still null, so a concurrent call can't overwrite an already-set date.
+  Future<void> setPetBornAtNow(String uid) async {
+    await _doc(uid).set({
+      'petBornAt': Timestamp.fromDate(DateTime.now()),
+      'updatedAt': Timestamp.fromDate(DateTime.now()),
+    }, SetOptions(merge: true));
+  }
 }

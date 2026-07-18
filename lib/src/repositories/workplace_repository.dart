@@ -20,6 +20,13 @@ class WorkplaceRepository {
         .map((s) => s.docs.isEmpty ? null : WorkplaceFirestore.fromDoc(s.docs.first));
   }
 
+  /// One-shot equivalent of [watchPrimary], for callers without a live
+  /// widget tree to subscribe from — e.g. a geofence background callback.
+  Future<Workplace?> getPrimary(String uid) async {
+    final snapshot = await _collection(uid).orderBy('createdAt').limit(1).get();
+    return snapshot.docs.isEmpty ? null : WorkplaceFirestore.fromDoc(snapshot.docs.first);
+  }
+
   Future<Workplace> create(String uid, Workplace workplace) async {
     final doc = _collection(uid).doc();
     final withId = workplace.copyWith(id: doc.id);

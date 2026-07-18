@@ -27,7 +27,9 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>職場のWi-Fiに接続したときに自動で出退勤を記録するために使用します。</string>
+	<string>職場の位置に着いたときに自動で出退勤を記録するために使用します。</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>アプリを閉じていても、職場の位置に着いたら自動で出退勤を記録するために使用します。</string>
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>
 		<string>com.jp.worktimer.widgetRefresh</string>

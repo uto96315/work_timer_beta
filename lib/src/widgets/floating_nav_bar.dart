@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'pixel_ui.dart';
+
 class FloatingNavDestination {
   const FloatingNavDestination({
     required this.icon,
@@ -33,55 +35,46 @@ class FloatingNavBar extends StatelessWidget {
       minimum: const EdgeInsets.only(bottom: 12),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 32),
-        child: Container(
-          height: 56,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: const Color(0xFFEFE6D2)),
-            boxShadow: [
-              BoxShadow(
-                color: colorScheme.primary.withValues(alpha: 0.18),
-                blurRadius: 16,
-                offset: const Offset(0, 6),
-              ),
-            ],
-          ),
-          child: Stack(
-            children: [
-              AnimatedAlign(
-                duration: const Duration(milliseconds: 280),
-                curve: Curves.easeOutCubic,
-                alignment: destinations.length <= 1
-                    ? Alignment.center
-                    : Alignment(-1 + 2 * selectedIndex / (destinations.length - 1), 0),
-                child: FractionallySizedBox(
-                  widthFactor: 1 / destinations.length,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: colorScheme.primary.withValues(alpha: 0.14),
-                        borderRadius: BorderRadius.circular(18),
+        child: PixelPanel(
+          padding: EdgeInsets.zero,
+          color: PixelColors.panel,
+          child: SizedBox(
+            height: 56,
+            child: Stack(
+              children: [
+                AnimatedAlign(
+                  duration: const Duration(milliseconds: 280),
+                  curve: Curves.easeOutCubic,
+                  alignment: destinations.length <= 1
+                      ? Alignment.center
+                      : Alignment(-1 + 2 * selectedIndex / (destinations.length - 1), 0),
+                  child: FractionallySizedBox(
+                    widthFactor: 1 / destinations.length,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: colorScheme.primary.withValues(alpha: 0.18),
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  for (var i = 0; i < destinations.length; i++)
-                    _NavIconButton(
-                      destination: destinations[i],
-                      selected: i == selectedIndex,
-                      selectedColor: colorScheme.primary,
-                      unselectedColor: colorScheme.outline,
-                      onTap: () => onDestinationSelected(i),
-                    ),
-                ],
-              ),
-            ],
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    for (var i = 0; i < destinations.length; i++)
+                      _NavIconButton(
+                        destination: destinations[i],
+                        selected: i == selectedIndex,
+                        selectedColor: colorScheme.primary,
+                        unselectedColor: PixelColors.ink,
+                        onTap: () => onDestinationSelected(i),
+                      ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -109,7 +102,6 @@ class _NavIconButton extends StatelessWidget {
     return Expanded(
       child: InkWell(
         onTap: onTap,
-        customBorder: const StadiumBorder(),
         child: Center(
           child: Icon(
             selected ? destination.selectedIcon : destination.icon,

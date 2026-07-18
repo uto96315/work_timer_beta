@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.5.0+12
+version: 1.5.1+13
 
 environment:
   sdk: ^3.12.1
@@ -47,9 +47,11 @@ dependencies:
   json_annotation: ^4.12.0
   flutter_dotenv: ^5.2.1
   flutter_svg: ^2.2.0
-  connectivity_plus: ^7.3.0
-  network_info_plus: ^8.2.1
   permission_handler: ^12.0.3
+  flutter_markdown_plus: ^1.0.12
+  native_geofence: ^1.3.1
+  geolocator: ^14.0.3
+  flame: ^1.29.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -86,8 +88,9 @@ flutter:
   assets:
     - assets/icon/wrtm_icon.png
     - assets/dog_emoji/
+    - assets/animals/puppy/
     - .env
-    - README.md
+    - docs/VISION.md
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
@@ -115,6 +118,9 @@ flutter:
           weight: 500
         - asset: assets/fonts/MPLUSRounded1c-Bold.ttf
           weight: 700
+    - family: DotGothic16
+      fonts:
+        - asset: assets/fonts/DotGothic16-Regular.ttf
   #   - family: Trajan Pro
   #     fonts:
   #       - asset: fonts/TrajanPro.ttf

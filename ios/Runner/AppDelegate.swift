@@ -2,6 +2,7 @@ import BackgroundTasks
 import Flutter
 import UIKit
 import WidgetKit
+import native_geofence
 
 private let widgetRefreshTaskIdentifier = "com.jp.worktimer.widgetRefresh"
 
@@ -11,6 +12,12 @@ private let widgetRefreshTaskIdentifier = "com.jp.worktimer.widgetRefresh"
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+    // Used by plugin: native_geofence — lets it register its own plugins on
+    // the background engine it spins up to handle geofence events while the
+    // app isn't running.
+    NativeGeofencePlugin.setPluginRegistrantCallback { registry in
+      GeneratedPluginRegistrant.register(with: registry)
+    }
     BGTaskScheduler.shared.register(
       forTaskWithIdentifier: widgetRefreshTaskIdentifier, using: nil
     ) { task in

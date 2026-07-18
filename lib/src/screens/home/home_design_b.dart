@@ -7,16 +7,20 @@ import 'package:intl/intl.dart';
 import '../../models/salary_type.dart';
 import '../../models/time_entry.dart';
 import '../../models/workplace.dart';
+import '../../providers/auth_providers.dart';
+import '../../providers/firebase_providers.dart';
 import '../../providers/time_entry_providers.dart';
 import '../../providers/user_profile_providers.dart';
 import '../../util/affection.dart';
 import '../../util/earnings_calculator.dart';
 import '../../util/home_snapshot.dart';
+import '../../util/pet_age.dart';
 import '../../util/pet_stage.dart';
 import '../../util/schedule_blocks.dart';
-import '../../widgets/animated_dog.dart';
 import '../../widgets/dog_track.dart' show AddBreakButton, ExtraBreakButton;
 import '../../widgets/home_cards.dart';
+import '../../widgets/pet_sprite_widget.dart';
+import '../../widgets/pixel_ui.dart';
 
 final _timeFormat = DateFormat('HH:mm');
 
@@ -43,7 +47,8 @@ class HomeContentB extends ConsumerWidget {
   final void Function(Workplace, List<TimeEntry>) onAutoClockInCheck;
   final Future<void> Function(TimeEntry, Workplace) onEditClockIn;
   final Future<void> Function(TimeEntry, Workplace, DateTime) onEditBreakStart;
-  final Future<void> Function(TimeEntry, Workplace) onClockOut;
+  final Future<void> Function(TimeEntry, Workplace, {DateTime? clockOutTime})
+  onClockOut;
   final Future<void> Function(TimeEntry, Workplace) onUndoClockOut;
   final Future<void> Function(TimeEntry, String) onStartExtraBreak;
   final Future<void> Function(TimeEntry, String) onEndExtraBreak;
@@ -61,6 +66,12 @@ class HomeContentB extends ConsumerWidget {
       data: (todayEntries) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           onAutoClockInCheck(workplace, todayEntries);
+          if (profile != null && profile.petBornAt == null) {
+            final uid = ref.read(currentUidProvider);
+            if (uid != null) {
+              ref.read(userProfileRepositoryProvider).setPetBornAtNow(uid);
+            }
+          }
         });
 
         final weekday = today.weekday;
@@ -113,6 +124,7 @@ class HomeContentB extends ConsumerWidget {
                 totalFood: profile?.totalFood ?? 0,
                 affectionPoints: profile?.affectionPoints ?? 0,
                 lastWorkedDate: profile?.lastWorkedDate,
+                petBornAt: profile?.petBornAt,
                 now: now,
               ),
               const SizedBox(height: 10),
@@ -145,7 +157,11 @@ class HomeContentB extends ConsumerWidget {
                     onApprove: () => ref
                         .read(overtimeApprovalProvider.notifier)
                         .approve(activeEntry.id),
-                    onClockOut: () => onClockOut(activeEntry, workplace),
+                    onClockOut: () => onClockOut(
+                      activeEntry,
+                      workplace,
+                      clockOutTime: snapshot.scheduledEnd,
+                    ),
                   ),
                 ],
                 const SizedBox(height: 10),
@@ -162,18 +178,15 @@ class HomeContentB extends ConsumerWidget {
                     ),
                   )
                 else
-                  Card(
-                    margin: EdgeInsets.zero,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: Column(
-                        children: [
-                          for (var i = 0; i < blocks.length; i++) ...[
-                            if (i > 0) const Divider(height: 1),
-                            _ScheduleRow(block: blocks[i], seed: i),
-                          ],
+                  PixelPanel(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Column(
+                      children: [
+                        for (var i = 0; i < blocks.length; i++) ...[
+                          if (i > 0) const Divider(height: 1),
+                          _ScheduleRow(block: blocks[i], seed: i),
                         ],
-                      ),
+                      ],
                     ),
                   ),
                 if (!hasScheduledBreak && todayEntry != null) ...[
@@ -255,12 +268,14 @@ class _PetHeaderCard extends StatelessWidget {
     required this.totalFood,
     required this.affectionPoints,
     required this.lastWorkedDate,
+    required this.petBornAt,
     required this.now,
   });
 
   final int totalFood;
   final int affectionPoints;
   final String? lastWorkedDate;
+  final DateTime? petBornAt;
   final DateTime now;
 
   @override
@@ -285,133 +300,86 @@ class _PetHeaderCard extends StatelessWidget {
       now: now,
     );
 
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            AnimatedCorgiFace(
-              size: 56,
-              sparkle: stageIndex == petStages.length - 1,
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        'コーギー',
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+    final ageLabel = petBornAt == null ? '0歳0ヶ月' : petAgeLabel(petBornAt!, now);
+
+    return PixelPanel(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          const PetSpriteView(size: 88),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      'ラブラドール',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        stage.name,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: scheme.onSurfaceVariant,
-                        ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      ageLabel,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: scheme.onSurfaceVariant,
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      SizedBox(
-                        width: 92,
-                        child: Text(
-                          'なつき度',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: 11, color: scheme.outline),
-                        ),
-                      ),
-                      Expanded(
-                        child: _SoftMeter(
-                          value: affection / affectionMax,
-                          colors: const [Color(0xFFFFB199), Color(0xFFFF8B6B)],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        affectionLabel(affection),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    SizedBox(
+                      width: 92,
+                      child: Text(
+                        'なつき度',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(fontSize: 11, color: scheme.outline),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      SizedBox(
-                        width: 92,
-                        child: Text(
-                          'お腹の空き具合',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: 11, color: scheme.outline),
-                        ),
+                    ),
+                    Expanded(
+                      child: PixelMeter(
+                        value: affection / affectionMax,
+                        color: PixelColors.rose,
                       ),
-                      Expanded(
-                        child: _SoftMeter(
-                          value: fullness,
-                          colors: const [Color(0xFF8FE0C4), Color(0xFF56BE9C)],
-                        ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      affectionLabel(affection),
+                      style: TextStyle(fontSize: 11, color: scheme.outline),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    SizedBox(
+                      width: 92,
+                      child: Text(
+                        'お腹の空き具合',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 11, color: scheme.outline),
                       ),
-                    ],
-                  ),
-                ],
-              ),
+                    ),
+                    Expanded(
+                      child: PixelMeter(
+                        value: fullness,
+                        color: PixelColors.mint,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
-    );
-  }
-}
-
-/// A rounded, gradient-filled meter — softer/puffier than the flat Material
-/// [LinearProgressIndicator], matching the fluffy pet card look.
-class _SoftMeter extends StatelessWidget {
-  const _SoftMeter({required this.value, required this.colors});
-
-  final double value;
-  final List<Color> colors;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final fillWidth = constraints.maxWidth * value.clamp(0.0, 1.0);
-        return Container(
-          height: 9,
-          decoration: BoxDecoration(
-            color: const Color(0xFFF1E9D8),
-            borderRadius: BorderRadius.circular(99),
-          ),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: Container(
-              width: fillWidth,
-              height: 9,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(colors: colors),
-                borderRadius: BorderRadius.circular(99),
-                boxShadow: [
-                  BoxShadow(
-                    color: colors.last.withValues(alpha: 0.45),
-                    blurRadius: 4,
-                    offset: const Offset(0, 1),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
     );
   }
 }
@@ -443,7 +411,7 @@ class _ScheduleRow extends StatelessWidget {
           Container(
             width: 8,
             height: 8,
-            decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
+            color: dotColor,
           ),
           const SizedBox(width: 14),
           _MarkerStrike(
@@ -459,42 +427,22 @@ class _ScheduleRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 10),
-          if (block.isBreak)
-            _Tag(
-              label: block.isExtraBreak ? '一時休憩' : '休憩',
-              color: scheme.tertiary,
-            )
-          else if (block.isOvertime)
-            _Tag(label: '残業', color: Colors.orange.shade700)
-          else if (isCurrent)
-            _Tag(label: '勤務中', color: scheme.primary),
+          Expanded(
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: block.isBreak
+                  ? PixelTag(
+                      label: block.isExtraBreak ? '一時休憩' : '休憩',
+                      color: scheme.tertiary,
+                    )
+                  : block.isOvertime
+                  ? PixelTag(label: '残業', color: Colors.orange.shade700)
+                  : isCurrent
+                  ? PixelTag(label: '勤務中', color: scheme.primary)
+                  : const SizedBox.shrink(),
+            ),
+          ),
         ],
-      ),
-    );
-  }
-}
-
-class _Tag extends StatelessWidget {
-  const _Tag({required this.label, required this.color});
-
-  final String label;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-        ),
       ),
     );
   }
@@ -548,8 +496,8 @@ class _MarkerStrikePainter extends CustomPainter {
     // Two overlapping passes at slightly different weights/alphas fake the
     // uneven ink coverage of a felt-tip marker.
     for (final layer in [
-      (width: 7.0, alpha: 0.85),
-      (width: 10.0, alpha: 0.3),
+      (width: 4.0, alpha: 0.55),
+      (width: 7.0, alpha: 0.16),
     ]) {
       final paint = Paint()
         ..color = _markerColor.withValues(alpha: layer.alpha)
@@ -567,8 +515,8 @@ class _MarkerStrikePainter extends CustomPainter {
 
     // Little overshoot flicks at each end, like a marker lifting off.
     final flickPaint = Paint()
-      ..color = _markerColor.withValues(alpha: 0.55)
-      ..strokeWidth = 5
+      ..color = _markerColor.withValues(alpha: 0.35)
+      ..strokeWidth = 3
       ..strokeCap = StrokeCap.round;
     canvas.drawLine(Offset(-3, midY - 4), Offset(5, midY), flickPaint);
     canvas.drawLine(

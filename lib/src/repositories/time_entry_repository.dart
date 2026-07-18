@@ -35,6 +35,17 @@ class TimeEntryRepository {
         .map((s) => s.docs.isEmpty ? null : TimeEntryFirestore.fromDoc(s.docs.first));
   }
 
+  /// One-shot equivalent of [watchOpenEntry], for callers without a live
+  /// widget tree to subscribe from — e.g. a geofence background callback.
+  Future<TimeEntry?> getOpenEntry(String uid, String workplaceId) async {
+    final snapshot = await _collection(uid, workplaceId)
+        .where('clockOut', isNull: true)
+        .orderBy('clockIn', descending: true)
+        .limit(1)
+        .get();
+    return snapshot.docs.isEmpty ? null : TimeEntryFirestore.fromDoc(snapshot.docs.first);
+  }
+
   Stream<List<TimeEntry>> watchEntriesForDate(String uid, String workplaceId, DateTime date) {
     return _collection(uid, workplaceId)
         .where('date', isEqualTo: _dateFormat.format(date))
@@ -107,9 +118,14 @@ class TimeEntryRepository {
     return entry;
   }
 
-  Future<void> clockOut(String uid, String workplaceId, String entryId) async {
+  Future<void> clockOut(
+    String uid,
+    String workplaceId,
+    String entryId, {
+    DateTime? clockOutTime,
+  }) async {
     await _collection(uid, workplaceId).doc(entryId).update({
-      'clockOut': Timestamp.fromDate(DateTime.now()),
+      'clockOut': Timestamp.fromDate(clockOutTime ?? DateTime.now()),
     });
   }
 

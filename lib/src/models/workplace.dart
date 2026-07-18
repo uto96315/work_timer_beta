@@ -64,9 +64,13 @@ abstract class Workplace with _$Workplace {
     /// Day of the month (1-31) salary is paid on, used to schedule a payday
     /// reminder notification. Null means not configured.
     int? payday,
-    /// Wi-Fi SSID that triggers automatic clock-in/out when the device
-    /// connects to or disconnects from it. Null/empty disables the trigger.
-    String? autoClockInSsid,
+    /// Latitude/longitude of a GPS geofence that triggers automatic
+    /// clock-in/out when the device enters/exits it — works even while the
+    /// app is backgrounded or terminated, unlike the schedule-based
+    /// [startTime] auto clock-in. Null latitude means the trigger is
+    /// disabled.
+    double? autoClockInLatitude,
+    double? autoClockInLongitude,
     @TimestampConverter() required DateTime createdAt,
     @NullableTimestampConverter() DateTime? updatedAt,
   }) = _Workplace;

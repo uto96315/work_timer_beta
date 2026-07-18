@@ -49,6 +49,12 @@ abstract class UserProfile with _$UserProfile {
     /// "yyyy-MM-dd" of the last day a shift was recorded, used to compute
     /// affection decay since. Null means never worked yet.
     String? lastWorkedDate,
+
+    /// When the pet was "born" — set once, the first time the home screen
+    /// loads with no value yet, so the displayed age (see
+    /// [lib/src/util/pet_age.dart]) counts up from install rather than
+    /// resetting every session.
+    @NullableTimestampConverter() DateTime? petBornAt,
     @NullableTimestampConverter() DateTime? updatedAt,
   }) = _UserProfile;
 
